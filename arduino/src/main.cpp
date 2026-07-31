@@ -74,7 +74,7 @@ void setup() {
     move(90, 90, 90, 0, 90, 180);
 
     // Test base
-    if (serial) {Serial.print("> Base\n");}move(90, 90, 90, 0, 90, 180);
+    if (serial) {Serial.print("> Base\n");}
     move(0, 90, 90, 0, 90, 180);
     move(180, 90, 90, 0, 90, 180);
     move(90, 90, 90, 0, 90, 180);
