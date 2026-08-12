@@ -1,0 +1,54 @@
+\chapter{Target specifications}
+\label{ch:target_specifications}
+
+\section{Mission-critical system specifications}
+\label{sec:mission_critical}
+
+\begin{table}[h!]
+\center
+\begin{tabular}{|p{0.3\linewidth}|p{0.3\linewidth}|p{0.3\linewidth}|}
+    \hline
+    \textbf{SPECIFICATIONS} & \textbf{ORIGIN} & \textbf{VERIFICATION} \\
+    (in measureable terms) & (or motivation of this specification) & (How will you confirm/measure that your system complies with this specification?) \\
+    \hline
+    The Braccio must track the human arm with no more than 0.2s of delay, excluding transmission latency over wireless protocol. & Teleoperation needs to be fast to feel responsive and intuitive. The 0.2s value is double the time given for the TeleopLab project \cite{bib:teleoperation_TeleopLab}. Since teleoperation in practical contexts can happen over large distances, the transmission latency is unbounded. & Using software timestamps, the latency from video-image to transmision will be recorded. Again, using timestampes, the latency from reception to set-point satisfaction will be measured. This will be confirmed with a slowed down video recording. \\
+    \hline
+    The computation of mapping from human-arm space to Braccio-arm space mustn't take more than 0.1s. & The contribution of this project shouldn't be computationally expensive. The value 0.1s was the upper bound given for the inverse kinematics computation in the TeleopLab project \cite{bib:teleoperation_TeleopLab}. & Using software timestamps, the latency of the computation will be measured. The portion of contribution to latency will then be computed, using the total latency. \\
+    \hline
+    The movement's hysteresis must be less than 5\%. & Movements/positions should be easily replicatable to be intuitive. A concern is that returning to the same position from a different angle/approach results in a different final-posiiton. The choice of 5\% is somewhat arbitrary. & Move each of the joints to their maximums, then move them to the midpoint. Record the actual position as the upper hysteresis. Move each of the joints to their minimums, then move them to the midpoint. Record the actual position as the lower hysteresis. The difference between these recordings is double the hysteresis. \\
+    \hline
+\end{tabular}
+\caption{Mission-critical system specifications}
+\end{table}
+
+\newpage
+\begin{table}[h!]
+\center
+\begin{tabular}{|p{0.3\linewidth}|p{0.3\linewidth}|p{0.3\linewidth}|}
+    \hline
+    \textbf{SPECIFICATIONS} & \textbf{ORIGIN} & \textbf{VERIFICATION} \\
+    (in measurable terms) & (or motivation of this specification) & (How will you confirm/measure that your system complies with this specification?) \\
+    \hline
+    The mapping program mustn't fail when a mapping does not exist or is not possible. & The robotic limb's kinematics may be very limited in some movements, compared to the human's limb. The program mustn't produce an unhandled exception from these scenarios. & Faulty human-to-robot mappings will be fed into the algorithm, and the algorithm mustn't disrupt the flow of the rest of the software pipeline. Examples of failure are: by crashing, or giving undefined/unpredictable behaviour. \\
+    \hline
+\end{tabular}
+\caption{Mission-critical system specifications (continued)}
+\end{table}
+
+\section{Field conditions}
+\label{sec:field_conditions}
+
+\begin{table}[h!]
+\center
+\begin{tabular}{|p{0.5\linewidth}|p{0.5\linewidth}|}
+    \hline
+    \textbf{REQUIREMENT} & \textbf{SPECIFICATION} \\
+    & (in measureable terms) \\
+    \hline
+    There mustn't be distractions in the background that may make the computer vision struggle. & There needs to be a blank wall (painted brick, cardboard, et cetera) behind the user's arm. \\
+    \hline
+    The  mount for the Braccio isn't very strong, and wind may loosen/break it. The wind mustn't topple the arm over. & The windspeed must be less than 20km/h. \\
+    \hline
+\end{tabular}
+\caption{Field conditions}
+\end{table}
