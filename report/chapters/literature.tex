@@ -29,58 +29,163 @@
 % \label{fig:model}
 % \end{figure}
 
-\section{Tinkerkit Braccio arm for Arduno}
-The Braccio arm has been used in similar projects to demonstrate teleoperation via intuitive control (natural human motions). An example uses an armband to measure the muscle contractions of a human arm \cite{bib:braccio_armband_demo}.
+% Introduction ================================
+\section{Introduction}
+%a) Introduction: which firstly justifies your project and secondly gives a broad overview of the subject topic. Basically like any introduction you have seen in the papers you have read.
+The application areas for robotics continues to expand, in both industrial and household contexts. Fully autonomous robots still pose risks in many contexts such as surgery, hence why it's often preferred to have a human in the control loop. Teleoperation refers to the control of machines, vehicles or robots over a distance, allowing human discretion and intuition to be incorporated into these contexts.
 
-The Braccio arm has also been used in other projects. For a feeding-assistant, the engineers used Denavit-Hartenberg parameters and forward-kinematics to determine the position of the end-effector \cite{bib:braccio_feeding_assistant}. The Denavit-Hartenberg parameters used in the study are shown in \autoref{tab:lit_dh_parameters}.
+Operators may not always be able to receive training on how to operate robotic systems, as formal training can be very time consuming for individuals and for companies. Intuitive forms of teleoperation aim to solve this, by reading an operator's natural movements or gestures and mapping these to corresponding commands (such as setpoints) for the robot systems. These natural movements can be observed with computer vision, which is far more accessible than specialised sensory hardware. Regardless of the data capture method, intuitive teleoperation introduces the challenge of mapping human kinematics to corresponding kinematics for robotic limbs, which often aren't anthropomorphic.
 
-\begin{table}[h!]
-\centering
-\caption{Denavit-Hartenberg parameters for Braccio arm}
-\label{tab:lit_dh_parameters}
-\begin{tabular}{|c|c|c|c|c|}
-    \hline
-    \textbf{i} & \textbf{$\alpha_{i-1}$ (degrees)} & \textbf{$r_{i-1}$ (inches)} & \textbf{$d_{i}$ (inches)} & $\theta_{i}$ (degrees) \\
-    \hline \hline
-    1 & 0 & 0 & 0 & $\theta_1$ \\
-    \hline
-    2 & 90 & 0 & 0 & $\theta_2$ \\
-    \hline
-    3 & 0 & 5 & 0 & $\theta_3$ \\
-    \hline
-    4 & 0 & 5 & 0 & $\theta_4$ \\
-    \hline
-    5 & 0 & 12 & 0 & $\theta_5$ \\
-    \hline
-\end{tabular}
-\end{table}
+Another risks that arises with teleoperation is weak network security. Malicious actors may wish to hijack robotic systems, steal configuration data, or even hold robotics systems under ransom. Teleoperation systems have realtime performance requirements, hence why implementing network security without introducing significant latency is an ongoing discussion.
 
-There was a project involving the use of computer vision to control the Braccio arm \cite{bib:braccio_hand_gestures}. In this project, a camera connected to a Raspberry Pi would detect hand gestures (number of fingers being held up) from the user, and translate these into commands for the Braccio arm.
+% Related Work ================================
+\section{Overview}
+% b) Body: This is main part of the report it must have
+%         - an overview section of the subject topic (more detailed than in intro).
+%         - sections for your subsystems, where possible discuss at least 3 different approaches.
+%         - a related work section which discusses at least 3 (where possible) different approaches for the full system. (can be part of overview).
+Receiving input from the operator has been done either via computer vision or a sensor suite attached to the operator's arm and/or hand. In a demonstration done by Mongardi \textit{et al.} \cite{bib:braccio_armband_demo}, success was found in teleoperating the Braccio arm using an armband that read muscle flexes to determine the operator's pose. An artificial neural network was used to convert the flexing data into 8 different poses. In the works of Reyes \textit{et al.} \cite{bib:braccio_hand_gestures}, one of the modes of operation used to teleoperate the Braccio arm uses computer vision to detect hand gestures. This offers a discrete set of operator poses, each corresponding to a pre-defined pose for the Braccio arm. They designed the poses for the Braccio arm such that the poses could be sequenced to complete a teleoperation task.
 
-\section{Teleoperation}
-Teleoperation has generally been in three categories \cite{bib:teleoperation_continuous_space}:
-\begin{itemize}
-    \item Joint mapping: Each joint of the slave device is mapped to a joint of the master device. This is only applicable if the kinematics are similar, which is not the case for a human arm and the Braccio arm.
-    \item End-effector mapping: The end-effector of the slave device is mapped to the end-effector of the master, and the intermediate joints are determined with forward and inverse kinematics.
-    \item Pose mapping: The general intention of the master device is mapped to the slave device.
-\end{itemize}
-The paper found that pose mapping, using a linear transformation in an intermediate space, was not only simpler to implement, but also more intuitive to use. The measure of "intuitiveness" comes from how quickly a novice was able to complete a task.
+Drăgoi \textit{et al.} \cite{bib:teleoperation_intuitive_using_MediaPipeHands} teleoperate a robotic arm with similar kinematics to the Braccio arm. They use the OpenCV software to extract the video feed from a built-in camera on a laptop, and Google's MediaPipe Hands software \cite{bib:MediaPipe_Hands} to identify the pose of the operator's hand. MediaPipe Hands provides monocular hand tracking; it uses the feed from a single camera to provide the coordinates (3-dimensional space) of several landmarks on a human hand.\\
+The team addresses kinematic mapping by first having a calibration step (to improve repeatability among different operators), and then using descriptors (such as "hand pitch" and "horizontal displacement") to control individual joints of the robotic arm. Alternatively using end-effector mapping with inverse kinematics was briefly discussed, but this was opted out as it would reduce stability and introduce more modelling overhead. The paper suggests end-effector mapping with IK as a natural next step.\\
+They address stability of the teleoperation system by; (1) low-pass filtering the setpoints of each joint, using a moving-average filter over 3 frames, (2) limiting the framerate of setpoints to 1 per 0.03s, thereby reducing network traffic and high-frequency oscillations in the setpoints, and (3) applying a deadband of $\pm2\degree$ to the joint angles, to reduce jitter.\\
+Drăgoi \textit{et al.} chose to send commands to the robotic arm over a local HTTP network, where the robot hosts the server using the HTTPServer and BaseHTTPRequestHandler software. They do not address the cybersecurity of the network.\\
+With these decisions, the project found some success, having to trade off accuracy for accessibility. The primary causes of error identified were: (1) inconsistent camera placement and hand visibility, (2) monocular depth ambiguity, and (3) the operator's familiarity with teleoperation. The paper recommends multi-view capture to improve independence of camera placements, and eliminate monocular depth ambiguity. Another recommendation of note is to use task-aware smoothing, giving gross movements less smoothing, and finer movements more.
 
+Chen \textit{et al.} \cite{bib:teleoperation_TeleopLab} developed a software platform, which they call TeleopLab, to bring intuitive teleoperation into educational contexts. This allowed students at home to perform practical activities, such as laboratory experiments.\\
+They chose for smartphones to be used by the operators (students) because of how common they are. The smartphone's relative position to an origin is determined using camera frames and motion sensing. This displacement is sent to the host computer at the lab using the public and forwarded port of the computer. The network and the commands were set up using the TeleMoMa framework \cite{bib:teleoperation_TeleMoMa}.\\
+When controlling the robotic arm, they map the cartesian coordinates of operator's pose to the end-effector of the robotic arm. The inverse kinematics was handled using the TRAC-IK solver \cite{bib:TRAC-IK}, which was plugged into the ROS. TRAC-IK runs two inverse kinematics methods simultaneously, and returns whichever converges first, typically within 1 millisecond. The first method is an extension of the Newton-Raphson method that mitigates local minima, and the second is a sequential quadratic programming optimisation.\\
+The overall project was successful in its goal, receiving positive feedback from the students. The learning/improvement rate was notably slower than with other teleoperation systems \cite{bib:teleoperation_surgery}\cite{bib:teleoperation_continuous_space}\cite{bib:teleoperation_continuous_space_2}, but this may be attributed to the fact that the novice operators were younger in age.
+
+% The Braccio arm has also been used in projects unrelated to teleoperation. For a feeding-assistant, Emu \textit{et al.} \cite{bib:braccio_feeding_assistant} used Denavit-Hartenberg parameters to model joints, which is a very common way of modelling mechanisms and robotics \cite{bib:teleoperation_survey}. The Denavit-Hartenberg parameters used in the study are shown in \autoref{tab:lit_dh_parameters}.
+
+% \begin{table}[h!]
+% \centering
+% \caption{Denavit-Hartenberg parameters for Braccio arm}
+% \label{tab:lit_dh_parameters}
+% \begin{tabular}{|c|c|c|c|c|}
+%     \hline
+%     \textbf{i} & \textbf{$\alpha_{i-1}$ (degrees)} & \textbf{$r_{i-1}$ (inches)} & \textbf{$d_{i}$ (inches)} & \textbf{$\theta_{i}$ (degrees)} \\
+%     \hline \hline
+%     1 & 0 & 0 & 0 & $\theta_1$ \\
+%     \hline
+%     2 & 90 & 0 & 0 & $\theta_2$ \\
+%     \hline
+%     3 & 0 & 5 & 0 & $\theta_3$ \\
+%     \hline
+%     4 & 0 & 5 & 0 & $\theta_4$ \\
+%     \hline
+%     5 & 0 & 12 & 0 & $\theta_5$ \\
+%     \hline
+% \end{tabular}
+% \end{table}
+
+The security of networks is rarely discussed in conjunction with other teleoperation subsystems. In articles that do discuss security in teleoperation, the security has been the focus of the paper with little attention on other subsystems.
+
+% Kinematic Mapping ================================
+\section{Kinematic Mapping}
+
+Mapping the kinematics of one device (the master limb) to the kinematics of another device (the slave limb) has generally been achieved by identifying positional characteristics of the master limb, and using that to calculate the corresponding positional characteristics of the slave limb, using a linear transformation.
+
+\textbf{Joint mapping} is where the positions of individual joints from the master limb is mapped to the positions of individual joints on the slave limb. This method works well when the master and slave share very similar kinematics \cite{bib:teleoperation_survey}. The mapping Drăgoi \textit{et al.} \cite{bib:teleoperation_intuitive_using_MediaPipeHands} use is very similar to joint mapping, in which they map the master's positional descriptors to each of the slave's joints.
+
+\newpage
+Another method is \textbf{end-effector mapping}, sometimes called "cartesian mapping" (and very similarly "fingertip mapping"). In this mapping method, the coordinates of the master's end-effector are mapped to coordinates for the slave \cite{bib:teleoperation_survey}. The positions of joints in the slave are then determined via inverse kinematics.\\
+Wang \textit{et al.} \cite{bib:teleoperation_surgery} evaluate end-effector mapping, joint mapping, and a unique "steering mapping" (which can be described as a variant of joint mapping) in terms of human-centric measures, such as cognitive load. Compared to the other two, they found that end-effector mapping gave significantly less cognitive load and resulted in less jerking (hesitations and sudden corrections) from the operator. End-effector mapping is also seen implemented in TeleopLab \cite{bib:teleoperation_TeleopLab}.\\
+A variant of end-effector mapping is applied in the mixed-reality project of Su \textit{et al.} \cite{bib:teleoperation_mixed_reality}, in which the displacement required to achieve a desired setpoint is used to determine velocities for each joint as opposed to just their positions.
+
+\textbf{Pose mapping} is where the intention of the master's pose is used to map to a slave-pose with similar intention. This is generally implemented with a discrete set of mapped poses, and interpolating between these poses \cite{bib:gesture_recognition}. Machine learning computer vision is a popular method of identifying the pose of the master limb. Pose mapping has unpredictable non-linear behaviour for poses that were interpolated \cite{bib:teleoperation_survey}\cite{bib:teleoperation_continuous_space}.
+
+Meeker \textit{et al.} \cite{bib:teleoperation_continuous_space}\cite{bib:teleoperation_continuous_space_2} propose \textbf{subspace mapping}, which uses an intermediate subspace to map between dissimilar kinematics. The intermediate subspace has basis vectors corresponding to the minimum number of parameters required to describe a pose, such as the "openness", "spread" and "curl" of a human hand. In their later work \cite{bib:teleoperation_continuous_space_2}, they describe a methodology for generating the transformation matrices (and other mapping constants) through a series of experiments as opposed to by intuition.\\
+This mapping model was compared to the end-effector and joint mapping models, with respect to how quickly novice operators were able to complete tasks, and how few tries were needed. They found that subspace mapping out-performed end-effector and joint mapping in these metrics. Joint mapping followed closely, in terms of performance, and this was attributed to the fact that joint mapping offered individual control of each robotic joint, which is not necessarily possible with the proposed subspace mapping.\\
+Subspace mapping performs well in these tasks where spatial positioning is not the challenge. Meeker \textit{et al.} intentionally used a different cartesian mapping method to position the end-effector (hand), although this method wasn't discussed in any depth. Using a different mapping method was possibly due to the limited expressiveness that comes with using a low-dimensional intermediate subspace.
+
+\newpage
+The Braccio arm has significantly dissimilar kinematics to that of a human forearm, making joint-mapping less preferable although still plausible, with the variation used by Drăgoi \textit{et al.} \cite{bib:teleoperation_intuitive_using_MediaPipeHands}. The Braccio also has a relatively simple end-effector; a two-finger gripper (or "claw"). This excludes the primary advantage that subspace mapping has over other mapping methods. Between end-effector mapping and pose mapping, end-effector mapping has been applied significantly more and consistently shown to be effective, making it the preferable option.
+
+% Inverse Kinematics ================================
+\section{Inverse Kinematics}
+
+Given that end-effector (EE) mapping is the desired way to transform between the kinematics of a human forearm with that of the Braccio, a suitable inverse kinematics (IK) algorithm is required. Among IK solvers, there are analytical and numerical methods.
+
+\textbf{Analytical methods} commonly use geometry, like the rule of cosines, to solve for joint angles. These methods are typically the fastest and most accurate \cite{bib:ik_motion_planning}\cite{bib:ik_potential_fields}\cite{bib:ik_FABRIK_with_SQP} but are limited, because they assume exactly one closed-form solution exists, or a small finite number of solutions \cite{bib:ik_FABRIK}, among which one is implicitly selected.\\
+When there are more degrees of freedom than constraints, there are infinitely many solutions. Assuming segment lengths are fixed, \autoref{fig_lit:ik_diagram} (a) shows a desired EE position in 2 dimensional space (2 constraints), with the only IK solution. We ignore the mirrored solution, because it is usually implicitly discarded when formulating the close-form solution. In diagram (a), analytical methods work. Diagrams (b) and (c) show two of the infinite possible solutions for the same desired EE position, but with 3 degrees of freedom.\\
+Another challenge for analytical solutions is scenarios with no solutions. Such scenarios arise when the desired EE position is outside of the reachable workspace, either due to limited reach or motion constraints on the degrees of freedom.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{graphics/ik_diagram.png}
+    \caption{Diagram showing IK solutions for different degrees of freedom}
+    \label{fig_lit:ik_diagram}
+\end{figure}
+
+Numerical methods typically use an initial guess, then an iterative process to improve that guess until the theoretical EE position is within acceptable error of the desired EE position. These methods handle the cases with infinite or no solutions, but are more computationally expensive.
+
+% The TeleopLab project \cite{bib:teleoperation_TeleopLab} makes use of the TRAC-IK solver \cite{bib:TRAC-IK}.
+
+The most popular ways to perform numerical IK are \textbf{Jacobian-based} methodologies \cite{bib:ik_motion_planning}\cite{bib:ik_potential_fields}. By using a system of equations that describe the forward kinematics, the Jacobian for the EE position with respect to the actuations is calculated, giving the relationship shown in \autoref{eqn_lit:jacobian_definition}. The Moore-Penrose pseudo-inverse of this Jacobian is used in a Newton-Raphson iterative process, where successive best guesses are generated \cite{bib:ik_motion_planning}, shown in \autoref{eqn_lit:jacobian_newton_raphson}.
+\begin{equation}
+    \frac{d\vec{x}}{dt}=J(\vec{q})\cdot\frac{d\vec{q}}{dt}
+    \label{eqn_lit:jacobian_definition}
+\end{equation}
+\begin{equation}
+    \vec{q}_{i+1}=\vec{q}_i+J(\vec{q}_{i})^{\dagger}\cdot(\vec{x}_{target}-\vec{x}(\vec{q}_i))
+    \label{eqn_lit:jacobian_newton_raphson}
+\end{equation}
+Newton-Raphson struggles with singularities, which occur when no solution exists, or the initial guess leads to a local maximum/minimum that does not have a nearby solution. To counter this, a Damped Least Squares procedure can be implemented, which replaces the pseudo-inverse \cite{bib:ik_motion_planning}, as shown in \autoref{eqn_lit:dls_pseudo_inverse}. $b$ is a small positive damping factor, and $I$ is the identity matrix.\\
+To meet requirements other than EE position, these Jacobian methods add "secondary tasks", which do not affect the position of the EE, and only the intermediate joints. The \textbf{gradient projection method} (GPM) \cite{bib:ik_joint_limits} establishes an objective function $H(\vec{q})$ that we want to minimise, and the gradient of this objective function is projected into the null space (where it doesn't affect the EE). This contribution is added to the Newton-Raphson equation, as shown in \autoref{eqn_lit:objective_function}. $k$ is a positive scalar that increases the aggressiveness of the objective function. Secondary objectives can include: avoiding joint-limits, or avoiding obstacles by modelling the physical space as a potential field.
+\begin{equation}
+    J^{\dagger}_{DLS}=J^T(J\cdot J^T+b^2\cdot I)^{-1}
+    \label{eqn_lit:dls_pseudo_inverse}
+\end{equation}
+\begin{equation}
+    \vec{q}_{i+1}=\vec{q}_i+J(\vec{q}_{i})^{\dagger}\cdot(\vec{x}_{target}-\vec{x}(\vec{q}_i))+k\cdot(J(\vec{q}_i)^{\dagger}\cdot J(\vec{q}_i)-I)\cdot\nabla H(\vec{q}_i)
+    \label{eqn_lit:objective_function}
+\end{equation}
+The mixed-reality project \cite{bib:teleoperation_mixed_reality} makes use of a velocity-based variant of the Jacobian method. Instead of computing incremental changes and iterating through the Newton-Raphson method, they used the result from applying the pseudo-inverse as a velocity for the joints.
+
+% Optimisation-based methods...
+
+% Another solver is iTaSC, which is implemented alongside Inverse Jacobian methods in Blender \cite{}.
+
+\newpage
+\textbf{Forward And Backward Reaching Inverse Kinematics} (FABRIK) is a popular type of heuristic numerical method, in which the positions of each joint is iteratively adjusted in a backward (from EE to base) and then forward (base to EE) manner. This is computationally cheaper and easier to implement than gradient methods \cite{bib:ik_FABRIK}, but under very high precision requirements FABRIK struggles to converge.\\
+FABRIK is also very versatile, with with a lot research done into variations for solving different problems. It can be used to solve for multiple EEs. It has also been extended to solve in scenarios where the kinematics are not like a tree, but instead have loops.\\
+\textbf{Sequential Quadratic Programming} is a Lagrange-based iterative method \cite{bib:ik_SQP} that naturally incorporates secondary optimisations. It optimises a non-linear scalar function, given a vector constraint. SQP converges faster than heuristic methods, but is sensitive to the initial guess. Xu \textit{et al.} \cite{bib:ik_FABRIK_with_SQP} combine FABRIK with SQP by having FABRIK generate the initial guess, and using SQP to converge to a solution.
+
+% broyden-fletcher-goldfarb-shanno algorithm...
+
+\textbf{Cyclic Coordinate Descent} (CCD) is another heuristic numerical method, but is designed for serial kinematic chains and thus is difficult to effectively implemented for more generalised robotic systems. It also returns solutions that aren't typically considered natural \cite{bib:ik_FABRIK}.
+
+Many other numerical methods exists, generally treating IK as a non-linear optimisation problem, and using algorithms such as Riemannian optimisation or the derivate-free optimisation \cite{bib:ik_FABRIK_with_SQP}. These are not discussed because of their lack in popularity. Some research has also been done in using neural networks to perform parts of computation, thereby reducing reliance on knowledge of the robot's kinematic structure \cite{bib:ik_FABRIK_with_SQP}\cite{bib:ik_FABRIK_with_ANN}. With the aim of extending Jacobian-based methods to soft robots, Fang \textit{et al.} \cite{bib:ik_soft_robots} implemented a neural network to learn the Jacobian computation, and translate the abstractions from simulation into actuation.
+
+Keeping flexibility for future work and improvement in mind, FABRIK is the preferred IK implementation. It offers a very versatile foundation with fast convergence times. For the level of precision on the Braccio (only $1\degree$), FABRIK's lack of precision won't pose a concern. The particular implementation of FABRIK has secondary objectives and joint limit constraints.
+
+\newpage
+% Computer Vision ================================
 \section{Computer Vision}
 
-The works of Moeslund and Granum \cite{bib:computer_vision_overview} summarises the advancements of computer vision in human tracking, from 1980 up till halfway through year 2000. The paper classifies human tracking into three applications; surveillance, control and analysis. From the descriptions given, control is what's relevant to this project.
+Considering that the desired kinematic mapping method is end-effector mapping, a suitable computer vision pipeline would return the cartesian coordinates of an operator's fingertips and the global coordinate of their hand. This rules out computer vision pipelines that perform gesture recognition, such as in the works of Reyes \textit{et al.} \cite{bib:braccio_hand_gestures} and Simão \textit{et al.} \cite{bib:gesture_recognition}. This also narrows the available computer vision pipelines to those that use joints as the abstraction level, as opposed to other abstractions such as silhouettes, edges, blobs, et cetera \cite{bib:computer_vision_overview}.
 
-The paper lists some common assumptions made in the context of computer vision. Computer vision isn't the focus of this project, so as many assumptions as applicable will be made, namely:
-\begin{itemize}
-    \item The subject (human arm) remains inside the workspace
-    \item No camera motion
-    \item Only one person in the workspace at the time
-    \item No occlusion
-    \item The motion pattern of the subject is known
-    \item Minimal changes to lighting
-    \item Static/uniform background
-    \item Known camera parameters
-\end{itemize}
-That being the case, robustness of a tracking algorithm is not as much of a priority, compared to accuracy and speed.
+Moeslund and Granum \cite{bib:computer_vision_overview} make note of the common assumptions made in computer vision. Assumptions they list which are acceptable for this project are: \textit{(i) The subject (human arm) remains inside the workspace. (ii) There is no camera motion. (iii) Only one subject (human arm) is in the workspace at the time. (iv) There is no occlusion of the subject. (v) The motion pattern (kinematics) of the subject is known. (vi) There are minimal changes to lighting. (vii) The background is static/uniform. (viii) The camera parameters are known.}\\
+With these assumptions in mind, the robustness of the computer vision pipeline is not as significant of a priority as accuracy and speed.
 
-The paper also discusses different ways of modelling the hand, from different abstraction methods. The stick-figure model, with joint-abstraction stands out, because it can most easily be translated into a corresponding pose for the Braccio arm.
+% Wireless Network ================================
+\section{Wireless Network}
+
+The network security, performance and reliability (referred to as the "trilemma" by Gounine \textit{et al.} \cite{bib:networks_surgery_2}) are a significant concern in teleoperation systems, especially where teleoperation is implemented in medical applications such as telesurgery (teleoperation for surgery) \cite{bib:networks_surgery}. Due to the very strict regulations surrounding it, telesurgery has its own dedicated software security frameworks, such as SecureSurgiNET \cite{bib:networks_SecureSurgiNET}. SecureSurgiNET uses a central telesurgical authority (TSA) to manage and verify certificates in their specialised public key infrastructure (PKI), similar to the X.509 standard.
+
+Mahmoud \textit{et al.} \cite{bib:networks_survey} discuss various cyber threats to teleoperation systems. Unencrypted networks are vulnerable to \textit{eavesdropping}, \textit{message modification}, and \textit{false data injection}. Networks without authentication are vulnerable to man-in-the-middle attacks, such as \textit{replay}, \textit{delay}, \text{message dropping}, and \textit{spoofing}. The \textbf{Secure and Statistically Reliable UDP} (SSR-UDP) protocol is often used as an implementation for both encryption and authentication, which is an adaptive information coding method. \textit{Jamming} attacks on wireless networks, cyber attacks on the master or slave software, \textit{physical} attacks on the hardware, and \textit{social engineering}, all remain a threat.
+
+The default communication middleware for ROS2 is \textbf{Data Distribution Service} (DDS), which implements encryption, authentication, and quality of service (QoS). There have been many recent vulnerabilities found in DDS, such as allowing compromised nodes to retain access, even after revoking its certificate \cite{bib:networks_survey_2}. This makes ROS2's DDS not a viable option for sensitive teleoperation systems.
+
+Boston Dynamic's Spot often serves as a cybersecurity benchmark, having very mature security which surpasses that of almost all commercial quadruped robots \cite{bib:networks_survey_2}. Spot's security implements encrypted communications (TLS 1.2+), authentication (X.509 and ES256), firmware integrity, and per-device unique encryption keys.
+
+Takanashi \textit{et al.} \cite{bib:networks_four_channel} successfully develop an encrypted four-channel bilateral control scheme. They implemented homomorphic encryption, which allowed them to do some computation while the data is still encrypted, to enhance security. BFV encryption introduces a lot more quantization than ElGamal encryption, in exchange for more operations that can be done with the ciphertext. They found that this made ElGamal encryption have a better performance-to-security balance.
+
+The slave-side networking of this project is handled by an ESP-WROOM-32 \cite{bib:esp-wroom-32}, limiting the security capabilities. This makes latency, due to overhead, a larger concern compared to the packet success rate. For this reason, SSR-UDP is the preferred protocol over TCL (which is built on TCP). This project doesn't stand to gain much security from homomorphic encryption, so instead \textbf{advanced encryption standard} (AES) algorithms is used, because the ESP-WROOM-32 has dedicated hardware accelerators for AES.
+
+% Discussion ================================
+% \section{Discussion}
+% c) Discussion: Compare the different approaches and pick one with justification (for the subsystems).
+% d) Conclusion: Could have a separate section or be part of discussion.

@@ -19,6 +19,7 @@
 \usepackage{hyphenat}
 \usepackage{setspace}
 \usepackage{hyperref}
+\usepackage{gensymb} % for \degree
 
 % Include page formatting here. 
 \parskip = 6mm
@@ -27,6 +28,10 @@
 \rhead[]{\thesection}
 \lhead[\thechapter]{}
 
+% Reduce space below Chapter and Section headings
+\usepackage{titlesec}
+\titlespacing*{\chapter}{0pt}{0ex}{0ex} % Chapters
+\titlespacing*{\section}{0pt}{0ex}{0ex} % Sections
 
 \begin{document}
  

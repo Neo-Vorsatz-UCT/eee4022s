@@ -1,3 +1,9 @@
 \chapter{Recommendations}
 
-Make sensible recommendations for further work.
+% Make sensible recommendations for further work.
+
+This paper only evaluates the kinematic mapping software with functional metrics, but does not provide direct insight into its intuitiveness. I would like to see the kinematic mapping software evaluated on intuitiveness, likely using the \textit{completion rate} and \textit{completion time} of teleoperation tasks, performed by novice operators. These metrics are used to evaluate intuitiveness in other teleoperation systems \cite{bib:teleoperation_intuitive_using_MediaPipeHands}\cite{bib:teleoperation_continuous_space}\cite{bib:teleoperation_continuous_space_2}.
+
+Bilateral teleoperation is where the operator receives tactile feedback from the slave limb. This can improve intuitiveness, but is not explored in this paper. Future work may introduce tactile feedback into the system, similar to some other teleoperation systems \cite{bib:teleoperation_surgery}\cite{bib:teleoperation_survey}.
+
+Path tracking is a natural next step when discusses inverse kinematics. The kinematic mapping software can be extended to solve for trajectories, in cases where autonomous movement is required or when setpoints are infrequent.
