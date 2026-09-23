@@ -1,17 +1,89 @@
-\chapter{Methodology}
+% \chapter{Methodology}
 
-This is what I did to test and confirm my hypothesis.
+% This is what I did to test and confirm my hypothesis.
 
 
-You may want to split this chapter into sub chapters depending on your design. I suggest you change
-the title to something more specific to your project.
+% You may want to split this chapter into sub chapters depending on your design. I suggest you change
+% the title to something more specific to your project.
 
-This is where you describe your design process in detail, from component/device selection to actual
-design implementation, to how you tested your system. Remember detail is important in technical
-writing. Do not just write I used a computer give the computer specifications or the oscilloscopes part
-number. Describe the system in enough detail so that someone else can replicate your design as well
-as your testing methodology.
+% This is where you describe your design process in detail, from component/device selection to actual
+% design implementation, to how you tested your system. Remember detail is important in technical
+% writing. Do not just write I used a computer give the computer specifications or the oscilloscopes part
+% number. Describe the system in enough detail so that someone else can replicate your design as well
+% as your testing methodology.
 
-If you use or design code for your system, represent it as flow diagrams in text.
+% If you use or design code for your system, represent it as flow diagrams in text.
 
-\textbf{IMPORTANT:} Include a motivation for your selection of an appropriate technique, or engineering or IT tool to solve your project problem. Discuss any limitations if appropriate.
+% \textbf{IMPORTANT:} Include a motivation for your selection of an appropriate technique, or engineering or IT tool to solve your project problem. Discuss any limitations if appropriate.
+\chapter{Design}
+
+\section{Kinematic Mapping}
+
+\begin{algorithm}
+\caption{Forward Reaching Algorithm}\label{alg:backward_reaching}
+\begin{algorithmic}[1]
+    \Require A sorted array $A$ of size $n$, and a target value $T$
+    \Ensure The index of $T$ in $A$, or $-1$ if not found
+    
+    \Function{ForwardReaching}{$J$}
+    \State $C\gets J.child$
+        \If {$C$ is a hinge}
+            \State $\vec{d}\gets C.\vec{pos}-J.\vec{pos}$
+            \LineComment[1]{Project $\vec{d}$ onto the plane perpendicular to $C.\vec{axis}_{aux}$}
+            \State $\vec{l}\gets\vec{d}-(\vec{d}\cdot C.\vec{axis}_{aux})C.\vec{axis}_{aux}$
+            \State $mag\_l \gets |\vec{l}|$
+            \LineComment[1]{Update joint orientation}
+            \If {$mab\_l=0$}
+                \State $J.\vec{axis}_{link}\gets C.\vec{axis}_{link}$
+            \Else
+                \State $J.\vec{axis}_{link}\gets\vec{l}/|\vec{l}|$
+            \EndIf
+            \State $J.\vec{axis}_{aux}\gets C.\vec{axis}_{aux}$
+            \LineComment[1]{Check joint limits}
+            \State $dir\gets\sgn((J.\vec{axis}_{link}\times C.\vec{axis}_{link})\cdot J.\vec{axis}_{aux})$
+            \State $C.value\gets\cos^{-1}(J.\vec{axis}_{link}\cdot C.\vec{axis}_{link})dir$
+            \If {$C$ is limited}
+                \If {$C.value>C.high$}
+                    \State $C.value\gets C.high$
+                    \State $J.\vec{axis}_{link}\gets C.\vec{axis}_{link}\cos(C.value)$
+                    \State $J.\vec{axis}_{link}\gets J.\vec{axis}_{link}+(C.\vec{axis}_{link}\times C.\vec{axis}_{aux})\sin(C.value)$
+                \ElsIf {$C.value<C.low$}
+                    \State $C.value\gets C.low$
+                    \State $J.\vec{axis}_{link}\gets C.\vec{axis}_{link}\cos(C.value)$
+                    \State $J.\vec{axis}_{link}\gets J.\vec{axis}_{link}+(C.\vec{axis}_{link}\times C.\vec{axis}_{aux})\sin(C.value)$
+                \EndIf
+            \Else
+                \LineComment[1]{Argument angle}
+                \State $C.value\gets\mod(C.value,360\degree)$
+                \If {$C.value>180\degree$}
+                    \State $C.value\gets C.value-360\degree$
+                \EndIf
+            \EndIf
+            \LineComment[1]{Update joint position}
+            \State $J.\vec{pos}\gets C.\vec{pos}-J.\vec{axis}_{link}J.len_{link}$
+            \Statex
+
+        \ElsIf {$C$ is a pivot}
+            \State $J.\vec{axis}_{link}\gets C.\vec{axis}_{link}$
+            \State $J.\vec{pos}\gets C.\vec{pos}-J.\vec{axis}_{link}J.len_{link}$
+            \Statex
+
+        \ElsIf {$C$ is prismatic}
+            \State $J.\vec{axis}_{link}\gets C.\vec{axis}_{link}$
+            \State $\vec{d}\gets C.\vec{pos}-J.\vec{pos}$
+            \State $C.value\gets\vec{d}\cdot J.\vec{axis}_{link}$
+            \LineComment[1]{Check joint limits}
+            \If {$C$ is limited}
+                \If {$C.value>C.high$}
+                    \State $C.value\gets C.high$
+                \ElsIf {$C.value<C.low$}
+                    \State $C.value\gets C.low$
+                \EndIf
+            \EndIf
+            \State $J.\vec{pos}\gets C.\vec{pos}-J.\vec{axis}_{link}C.value$
+        \EndIf
+        
+
+    \EndFunction
+\end{algorithmic}
+\end{algorithm}

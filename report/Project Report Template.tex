@@ -20,6 +20,13 @@
 \usepackage{setspace}
 \usepackage{hyperref}
 \usepackage{gensymb} % for \degree
+\usepackage{algorithm} % for algorithm float
+\usepackage{algpseudocode} % for pseudocode
+\renewcommand{\algorithmiccomment}[1]{\hfill // #1} % make comments //
+% \newcommand{\LineComment}[1]{\Statex \hspace*{\algorithmicindent}\hspace{1em} // #1} % add comments on its own line
+% \newcommand{\LineComment}[2][1]{\State\hspace{#1\algorithmicindent}#2}
+\newcommand{\LineComment}[2][0]{\Statex \hspace*{\algorithmicindent}\hspace{#1em} // #2} % add comments on its own line
+\DeclareMathOperator{\sgn}{sgn} % sign function
 
 % Include page formatting here. 
 \parskip = 6mm
