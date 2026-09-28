@@ -3,7 +3,8 @@
 
 # Variables
 MICROMAMBA = micromamba
-ENV = env/environment.yml
+ENV = env
+VENV = eee4022s
 BOLD = $$(tput bold)
 RESET = $$(tput sgr0)
 # source ~/.bashrc && micromamba
@@ -12,13 +13,13 @@ RESET = $$(tput sgr0)
 
 # Create a Python virtual environment, assuming micromamba is installed
 micromamba:
-	@$(MICROMAMBA) env create -f $(ENV)
-	@wget -P ./mediapipe https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+	@$(MICROMAMBA) env create -f $(ENV)/environment.yml
+	@wget -P ./mediapipe_models https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
 
 # Install dependencies
 dep:
-	@pip install -r requirements.txt
-	@wget -P ./mediapipe https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+	@pip install -r $(ENV)/requirements.txt
+	@wget -P ./mediapipe_models https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
 
 # Run program
 run:

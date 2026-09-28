@@ -4,7 +4,6 @@
 import time
 import cv2
 import mediapipe as mp
-# from mediapipe.tasks import vision as mptv
 mptv = mp.tasks.vision
 
 # TYPES ================================
@@ -133,6 +132,7 @@ while True:
 
     # Display the frame
     draw_landmarks(frame, latest_result)
+    # draw_all_landmarks_on_image(frame, latest_result)
     cv2.imshow("Hand Landmarks", frame)
 
     # Check exit condition

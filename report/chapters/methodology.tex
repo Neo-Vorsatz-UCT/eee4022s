@@ -20,70 +20,196 @@
 \section{Kinematic Mapping}
 
 \begin{algorithm}
-\caption{Forward Reaching Algorithm}\label{alg:backward_reaching}
+\caption{FABRIK Algorithm}
+\label{alg:fabrik}
+\footnotesize{
 \begin{algorithmic}[1]
-    \Require A sorted array $A$ of size $n$, and a target value $T$
-    \Ensure The index of $T$ in $A$, or $-1$ if not found
+    \Require A linked list $L$ of joints where $L[0]$ is the world frame, and $L[1]$ is the base, $L[n-1]$ is the end-effector, and $L[n]$ is the target, an acceptable squared error $e$, and a maximum number of forward-backward iterations $n$
+    \Ensure The end-effector is within $e$ of the target, or iterations reach maximum
     
-    \Function{ForwardReaching}{$J$}
-    \State $C\gets J.child$
-        \If {$C$ is a hinge}
-            \State $\vec{d}\gets C.\vec{pos}-J.\vec{pos}$
-            \LineComment[1]{Project $\vec{d}$ onto the plane perpendicular to $C.\vec{axis}_{aux}$}
-            \State $\vec{l}\gets\vec{d}-(\vec{d}\cdot C.\vec{axis}_{aux})C.\vec{axis}_{aux}$
-            \State $mag\_l \gets |\vec{l}|$
-            \LineComment[1]{Update joint orientation}
-            \If {$mab\_l=0$}
-                \State $J.\vec{axis}_{link}\gets C.\vec{axis}_{link}$
-            \Else
-                \State $J.\vec{axis}_{link}\gets\vec{l}/|\vec{l}|$
-            \EndIf
-            \State $J.\vec{axis}_{aux}\gets C.\vec{axis}_{aux}$
-            \LineComment[1]{Check joint limits}
-            \State $dir\gets\sgn((J.\vec{axis}_{link}\times C.\vec{axis}_{link})\cdot J.\vec{axis}_{aux})$
-            \State $C.value\gets\cos^{-1}(J.\vec{axis}_{link}\cdot C.\vec{axis}_{link})dir$
-            \If {$C$ is limited}
-                \If {$C.value>C.high$}
-                    \State $C.value\gets C.high$
-                    \State $J.\vec{axis}_{link}\gets C.\vec{axis}_{link}\cos(C.value)$
-                    \State $J.\vec{axis}_{link}\gets J.\vec{axis}_{link}+(C.\vec{axis}_{link}\times C.\vec{axis}_{aux})\sin(C.value)$
-                \ElsIf {$C.value<C.low$}
-                    \State $C.value\gets C.low$
-                    \State $J.\vec{axis}_{link}\gets C.\vec{axis}_{link}\cos(C.value)$
-                    \State $J.\vec{axis}_{link}\gets J.\vec{axis}_{link}+(C.\vec{axis}_{link}\times C.\vec{axis}_{aux})\sin(C.value)$
+    \Function{Fabrik}{$L,e,n$}
+        \LineComment[0]{Define world and target}
+        \State $W\gets L[0]$
+        \State $T\gets L[1]$
+        \While{$T$ is not immovable}
+            \State $T\gets T.child$
+        \EndWhile
+        \Statex
+
+        \LineComment[0]{Loop until error reduced or iterations maxed}
+        \State $error\gets |T.\vec{pos}-T.parent.\vec{pos}|^2$
+        \State $i\gets 0$
+        \While{$i<n$ \textbf{and} $error>e$}
+            \LineComment[1]{Forward reaching}
+            \State $J\gets T$
+            \State $N\gets T.parent$
+            \While{$N\neq W$}
+                \State $P\gets J$
+                \State $J\gets N$
+                \State $N\gets N.parent$
+                \If {$P$ is a hinge}
+                    \State $\text{MoveHinge}(J, P, 1)$
+                \ElsIf {$P$ is a pivot}
+                    \State $\text{MovePivot}(J, P, N, 1)$
+                \ElsIf {$P$ is prismatic \textbf{or} $P$ is immovable}
+                    \State $\text{MovePrismatic}(J, P, 1)$
                 \EndIf
-            \Else
-                \LineComment[1]{Argument angle}
-                \State $C.value\gets\mod(C.value,360\degree)$
-                \If {$C.value>180\degree$}
-                    \State $C.value\gets C.value-360\degree$
-                \EndIf
-            \EndIf
-            \LineComment[1]{Update joint position}
-            \State $J.\vec{pos}\gets C.\vec{pos}-J.\vec{axis}_{link}J.len_{link}$
+            \EndWhile
             \Statex
 
-        \ElsIf {$C$ is a pivot}
-            \State $J.\vec{axis}_{link}\gets C.\vec{axis}_{link}$
-            \State $J.\vec{pos}\gets C.\vec{pos}-J.\vec{axis}_{link}J.len_{link}$
+            \LineComment[1]{Backward reaching}
+            \State $J\gets W$
+            \State $N\gets W.child$
+            \While{$N\neq T$}
+                \State $P\gets J$
+                \State $J\gets N$
+                \State $N\gets N.child$
+                \If {$P$ is a hinge}
+                    \State $\text{MoveHinge}(J, P, -1)$
+                \ElsIf {$P$ is a pivot}
+                    \State $\text{MovePivot}(J, P, N, -1)$
+                \ElsIf {$P$ is prismatic \textbf{or} $P$ is immovable}
+                    \State $\text{MovePrismatic}(J, P, -1)$
+                \EndIf
+            \EndWhile
             \Statex
 
-        \ElsIf {$C$ is prismatic}
-            \State $J.\vec{axis}_{link}\gets C.\vec{axis}_{link}$
-            \State $\vec{d}\gets C.\vec{pos}-J.\vec{pos}$
-            \State $C.value\gets\vec{d}\cdot J.\vec{axis}_{link}$
-            \LineComment[1]{Check joint limits}
-            \If {$C$ is limited}
-                \If {$C.value>C.high$}
-                    \State $C.value\gets C.high$
-                \ElsIf {$C.value<C.low$}
-                    \State $C.value\gets C.low$
-                \EndIf
-            \EndIf
-            \State $J.\vec{pos}\gets C.\vec{pos}-J.\vec{axis}_{link}C.value$
-        \EndIf
-        
-
+            \LineComment[1]{End iteration}
+            \State $error\gets |T.\vec{pos}-T.parent.\vec{pos}|^2$
+            \State $i\gets i+1$
+        \EndWhile
     \EndFunction
 \end{algorithmic}
+}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Move Joint under Hinge Constraints}
+\label{alg:move_hinge}
+\footnotesize{
+\begin{algorithmic}[1]
+    \Require A pointer $J$ to a joint, a pointer $P$ to the previous joint, and the direction $dir$ of FABRIK (end2base$=1$, base2end$=-1$)
+    \Ensure Joint $J$ is positioned \& oriented under the hinge constraints of $P$
+
+    \Function{MoveHinge}{$J,P,dir$}
+        \LineComment[0]{Project distance $\vec{d}$ onto the plane perpendicular to $P.\vec{axis}_{aux}$}
+        \State $\vec{d}\gets P.\vec{pos}-J.\vec{pos}$
+        \State $\vec{l}\gets\vec{d}-(\vec{d}\cdot P.\vec{axis}_{aux})P.\vec{axis}_{aux}$
+        \Statex
+
+        \LineComment[0]{Update joint orientation}
+        \State $mag\_l \gets |\vec{l}|$
+        \If {$mag\_l=0$}
+            \State $J.\vec{axis}_{link}\gets P.\vec{axis}_{link}$
+        \Else
+            \State $J.\vec{axis}_{link}\gets (\vec{l}/mag\_l)dir$
+        \EndIf
+        \State $J.\vec{axis}_{aux}\gets P.\vec{axis}_{aux}$
+        \Statex
+
+        \LineComment[0]{Check joint limits}
+        \State $sign\gets\sgn((J.\vec{axis}_{link}\times P.\vec{axis}_{link})\cdot J.\vec{axis}_{aux})dir$
+        \State $P.value\gets\cos^{-1}(J.\vec{axis}_{link}\cdot P.\vec{axis}_{link})sign$
+        \If {$P$ is limited}
+            \If {$P.value>P.high$}
+                \State $P.value\gets P.high$
+                \State $J.\vec{axis}_{link}\gets P.\vec{axis}_{link}\cos(P.value)$
+                \State $J.\vec{axis}_{link}\gets J.\vec{axis}_{link}+(P.\vec{axis}_{link}\times P.\vec{axis}_{aux})\sin(P.value)dir$
+            \ElsIf {$P.value<P.low$}
+                \State $P.value\gets P.low$
+                \State $J.\vec{axis}_{link}\gets P.\vec{axis}_{link}\cos(P.value)$
+                \State $J.\vec{axis}_{link}\gets J.\vec{axis}_{link}+(P.\vec{axis}_{link}\times P.\vec{axis}_{aux})\sin(P.value)dir$
+            \EndIf
+        \EndIf
+        \Statex
+
+        \LineComment[0]{Update joint position}
+        \State $J.\vec{pos}\gets P.\vec{pos}-J.\vec{axis}_{link}J.len_{link}dir$
+    \EndFunction
+\end{algorithmic}
+}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Move Joint under Pivot Constraints}
+\label{alg:move_pivot}
+\footnotesize{
+\begin{algorithmic}[1]
+    \Require A pointer $J$ to a joint, a pointer $P$ to the previous joint, a pointer $N$ to the next joint, and the direction $dir$ of FABRIK (end2base$=1$, base2end$=-1$)
+    \Ensure Joint $J$ is positioned \& oriented under the pivot constraints of $P$
+
+    \Function{MovePivot}{$J,P,N,dir$}
+        \LineComment[0]{Update joint position}
+        \State $J.\vec{axis}_{link}\gets P.\vec{axis}_{link}$
+        \State $J.\vec{pos}\gets P.\vec{pos}-J.\vec{axis}_{link}J.len_{link}dir$
+        \Statex
+
+        \LineComment[0]{Determine auxiliary axis direction}
+        \State $\vec{d}\gets J.\vec{pos}-N.\vec{pos}$
+        \State $\vec{a}\gets J.\vec{axis}_{link}\times\vec{d}$
+        \State $mag\_a\gets|\vec{a}|$
+        \If{$mag\_a=0$}
+            \State $\vec{a}\gets P.\vec{axis}_{aux}$
+        \Else
+            \State $\vec{a}\gets\vec{a}/mag\_a$
+        \EndIf
+        \Statex
+
+        \LineComment[0]{Correct the direction of the auxiliary axis}
+        \State $J.\vec{axis}_{aux}\gets\vec{a}\sgn(J.\vec{axis}_{aux}\cdot\vec{a})$
+        \Statex
+
+        \LineComment[0]{Check joint limits}
+        \State $sign\gets\sgn((J.\vec{axis}_{aux}\times P.\vec{axis}_{aux})\cdot J.\vec{axis}_{link})dir$
+        \State $P.value\gets\cos^{-1}(J.\vec{axis}_{aux}\cdot P.\vec{axis}_{aux})sign$
+        \If {$P$ is limited}
+            \If {$P.value>P.high$}
+                \State $P.value\gets P.high$
+                \State $J.\vec{axis}_{aux}\gets P.\vec{axis}_{aux}\cos(P.value)$
+                \State $J.\vec{axis}_{aux}\gets J.\vec{axis}_{aux}-(P.\vec{axis}_{link}\times P.\vec{axis}_{aux})\sin(P.value)dir$
+            \ElsIf {$P.value<P.low$}
+                \State $P.value\gets P.low$
+                \State $J.\vec{axis}_{aux}\gets P.\vec{axis}_{aux}\cos(P.value)$
+                \State $J.\vec{axis}_{aux}\gets J.\vec{axis}_{aux}-(P.\vec{axis}_{link}\times P.\vec{axis}_{aux})\sin(P.value)dir$
+            \EndIf
+        \EndIf
+    \EndFunction
+\end{algorithmic}
+}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Move Joint under Prismatic Constraints}
+\label{alg:move_prismatic}
+\footnotesize{
+\begin{algorithmic}[1]
+    \Require A pointer $J$ to a joint, a pointer $P$ to the previous joint, and the direction $dir$ of FABRIK (end2base$=1$, base2end$=-1$)
+    \Ensure Joint $J$ is positioned \& oriented under the prismatic constraints of $P$
+
+    \Function{MovePrismatic}{$J,P,dir$}
+        \LineComment[0]{Update joint orientation}
+        \State $J.\vec{axis}_{link}\gets P.\vec{axis}_{link}$
+        \State $J.\vec{axis}_{aux}\gets P.\vec{axis}_{aux}$
+        \Statex
+
+        \LineComment[0]{Calculate joint length}
+        \State $\vec{d}\gets P.\vec{pos}-J.\vec{pos}$
+        \State $P.value\gets(\vec{d}\cdot J.\vec{axis}_{link})dir-J.len_{link}$
+        \Statex
+
+        \LineComment[0]{Check joint limits}
+        \If {$P$ is limited}
+            \If {$P.value>P.high$}
+                \State $P.value\gets P.high$
+            \ElsIf {$P.value<P.low$}
+                \State $P.value\gets P.low$
+            \EndIf
+        \EndIf
+        \Statex
+        
+        \LineComment[0]{Update joint position}
+        \State $J.\vec{pos}\gets P.\vec{pos}-J.\vec{axis}_{link}(P.value+J.len_{link})dir$
+    \EndFunction
+\end{algorithmic}
+}
 \end{algorithm}
