@@ -19,6 +19,7 @@
 \usepackage{hyphenat}
 \usepackage{setspace}
 \usepackage{hyperref}
+\newcommand{\algorithmautorefname}{Algorithm} % give hyperref or \autoref a name for algorithms
 \usepackage{gensymb} % for \degree
 \usepackage{algorithm} % for algorithm float
 \usepackage{algpseudocode} % for pseudocode
@@ -85,7 +86,14 @@
 \include{chapters/conclusions.tex}
 \include{chapters/recommendations.tex}
 \bibliographystyle{IEEEtran}
-\bibliography{bibliography/references.bib}
+\bibliography{
+    bibliography/teleoperation.bib,
+    bibliography/kinematic_mapping.bib,
+    bibliography/inverse_kinematics.bib,
+    bibliography/computer_vision.bib,
+    bibliography/network.bib,
+    bibliography/tools.bib
+}
 \appendix
 \include{appendices/appendixa.tex}
 \include{appendices/appendixb.tex}

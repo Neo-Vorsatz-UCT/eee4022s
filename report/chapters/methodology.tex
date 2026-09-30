@@ -17,7 +17,17 @@
 % \textbf{IMPORTANT:} Include a motivation for your selection of an appropriate technique, or engineering or IT tool to solve your project problem. Discuss any limitations if appropriate.
 \chapter{Design}
 
+\section{Computer Vision}
+The computer vision pipeline of choice was inspired by Drăgoi \textit{et al.} \cite{bib:teleoperation_intuitive_using_MediaPipeHands}. OpenCV was used to extract the live video feed of the laptop's camera, which was then fed into Google's MediaPipe Hand Landmark Detection \cite{bib:MediaPipe_Hand_landmarks_detecion}. MediaPipe Hand Landmark Detection provides monocular hand tracking and pose estimation, and is the successor to MediaPipe Hands, as MediaPipe Hands is now deprecated.
+
+Other computer vision pipelines that were considered include Ultralytics' YOLO \cite{bib:Ultralytics_YOLO} and MMPose. The \textbf{YOLO models} are extremely customisable and easily trainable, making them excellent for niche computer vision tasks such as forensics \cite{bib:YOLO_in_forensics}, and overall hand detection, given a good data set \cite{bib:YOLO_in_complex_background}. There are no pretrained models for hand pose estimation, and the time constraints of this project did not allow for training a custom model. \textbf{MMPose} has pretrained models for hand pose estimation, but isn't as accurate as MediaPipe for this specific task \cite{bib:MMPose_versus_MediaPipe}.
+
 \section{Kinematic Mapping}
+
+The inverse kinematics uses the FABRIK algorithm. In particular, it implements an adaptation of FABRIK described by Moreno \textit{et al.} \cite{bib:ik_FABRIK_constraints}, which incorporates movement for more joints (not just ball joints), as well as additional motion constraints. The pseudocode for the algorithm can be seen in \autoref{alg:fabrik}, while the pseudocode for each individual joint can be seen in \autoref{alg:move_hinge} - \autoref{alg:move_prismatic}.
+
+\subsection{Algorithm}
+This implementation uses a linked list structure to describe the kinematics and positions of an arbitrary serial manipulator. Like with normal FABRIK \cite{bib:ik_original_FABRIK}, the algorithm iterates through this linked list structure, adjusting positions of joints under the constraints of its previous joints. This process is repeated for both a forward-reaching and backward-reaching stage. The adapation of FABRIK restricts where successive joints can be positioned based on the type of joint that came before, and then corrects the position based on the joint's range of motion, such as [-90\degree, 90\degree].
 
 \begin{algorithm}
 \caption{FABRIK Algorithm}

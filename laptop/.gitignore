@@ -2,4 +2,7 @@
 .venv/
 
 # MediaPipe model
-mediapipe/
+mediapipe_models/
+
+# Visual Studio Code
+.vscode/
