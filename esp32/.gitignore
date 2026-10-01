@@ -1,0 +1,7 @@
+# PlatformIO
+.pio
+README
+sdkconfig*
+
+# Visual Studio Code
+.vscode/
