@@ -24,7 +24,7 @@ Other computer vision pipelines that were considered include Ultralytics' YOLO \
 
 \section{Kinematic Mapping}
 
-The inverse kinematics uses the FABRIK algorithm. In particular, it implements an adaptation of FABRIK described by Moreno \textit{et al.} \cite{bib:ik_FABRIK_constraints}, which incorporates movement for more joints (not just ball joints), as well as additional motion constraints. The pseudocode for the algorithm can be seen in \autoref{alg:fabrik}, while the pseudocode for each individual joint can be seen in \autoref{alg:move_hinge} - \autoref{alg:move_prismatic}.
+The inverse kinematics uses the FABRIK algorithm. In particular, it implements an adaptation of FABRIK described by Moreno \textit{et al.} \cite{bib:ik_FABRIK_constraints}, which incorporates movement for more joints (not just ball joints), as well as additional motion constraints. The pseudocode for the algorithm can be seen in \autoref{alg:fabrik}, while the pseudocode for each type of joint can be seen in \autoref{alg:move_hinge} - \autoref{alg:move_prismatic}.
 
 \subsection{Algorithm}
 This implementation uses a linked list structure to describe the kinematics and positions of an arbitrary serial manipulator. Like with normal FABRIK \cite{bib:ik_original_FABRIK}, the algorithm iterates through this linked list structure, adjusting positions of joints under the constraints of its previous joints. This process is repeated for both a forward-reaching and backward-reaching stage. The adapation of FABRIK restricts where successive joints can be positioned based on the type of joint that came before, and then corrects the position based on the joint's range of motion, such as [-90\degree, 90\degree].
