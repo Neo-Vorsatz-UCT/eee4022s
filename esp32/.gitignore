@@ -1,7 +1,13 @@
 # PlatformIO
 .pio
 README
-sdkconfig*
+*.old
+
+# Espressif IDF
+managed_components/
 
 # Visual Studio Code
 .vscode/
+
+# privacy
+lib/local_wifi/wifi_credentials.h
