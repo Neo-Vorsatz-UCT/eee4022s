@@ -22,8 +22,6 @@
 
 // FUNCTION DECLARATIONS ================================
 
-static uint16_t crc16(const uint8_t *d, size_t n);
-
 /**
  * @brief Initializes UART, Wi-Fi, and server behaviour
  */
@@ -39,7 +37,7 @@ static void taskDTLS(void *arg);
 #ifdef RUN_TEST
 
 void app_main() {
-    // TODO: Implement code for testing
+    // Nothing
 }
 
 #else
@@ -55,17 +53,6 @@ void app_main() {
 #endif
 
 // FUNCTION DEFINITIONS ================================
-
-static uint16_t crc16(const uint8_t *d, size_t n) {
-    uint16_t c = 0xFFFF;
-    while (n--) {
-        c ^= ((uint16_t)*d++) << 8;
-        for (int i=0; i<8; i++) {
-            c = (c & 0x8000) ? (c << 1) ^ 0x1021 : c << 1;
-        }
-    }
-    return c;
-}
 
 static void init() {
     initUART();

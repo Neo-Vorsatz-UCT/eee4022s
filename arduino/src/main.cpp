@@ -4,18 +4,31 @@
     Last updated: 5 October 2026
 */
 
-#define RUN_TEST // Uncomment this to run the test script
+// #define RUN_TEST // Uncomment this to run the test script
 
 // External includes
 #include <Arduino.h>
+#include <stdint.h>
 
 // Internal includes
+#include <uart_w_esp32.h>
 #include <braccio_actuation.h>
 
-// GLOBAL VARIABLES ================================
+// CONSTANTS ================================
 
-vector_t pos;
-bool serial;
+// Braccio servo motor connectors
+const int conn[6] = {BA_M1, BA_M2, BA_M3, BA_M4, BA_M6, BA_M5}; // my Braccio's wrist and claw motors are swapped
+
+// Safety
+#define TIMEOUT_SETPOINT 5000 // maximum time between valid setpoints before the Braccio moves to the safe position
+
+// VARIABLES ================================
+
+// Position control
+vector_t pos; // position the Braccio is moving to
+
+// Safety
+unsigned long timeLastSetpoint; // timestamp of most recent valid setpoint, in milliseconds
 
 // FUNCTION DECLARATIONS ================================
 
@@ -25,13 +38,18 @@ bool serial;
 void panic();
 
 /**
+ * @brief Moves the Braccio to the "safe" position
+ */
+void safe();
+
+/**
  * @brief Moves to a given setpoint using the blocking-movement version from `braccio_actuation`, then delays for 1 second
  * 
  * @param base The setpoint angle for the base
  * @param joint1 The setpoint angle for the first joint
  * @param joint2 The setpoint angle for the second joint
  * @param joint3 The setpoint angle for the third joint
- * @param write The setpoint angle for the wrist
+ * @param wrist The setpoint angle for the wrist
  * @param claw The setpoint angle for the claw
  */
 void testMove(float base, float joint1, float joint2, float joint3, float wrist, float claw);
@@ -48,15 +66,21 @@ void testResetPos();
 void setup() {
     // Initialize serial
     Serial.begin(115200);
-    serial = (Serial) ? true : false;
+    bool serial = (Serial) ? true : false;
     if (serial) {Serial.print("================================\n");}
     if (serial) {Serial.print("{ Program started\n");}
     if (serial) {Serial.print("> Waiting ...\n");}
-    delay(1000*1); // wait 1 second
+
+    // Initialize builtin LED
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LOW);
+
+    // Wait 1 second
+    delay(1000);
 
     // Initialize arm
     if (serial) {Serial.print("> ... Done waiting\n");}
-    if (!baInit()) {
+    if (!baInit(BA_DEFAULT_SOFT_START, conn)) {
         if (serial) {Serial.print("! Initialisation failed\n");}
         if (serial) {Serial.print("} Program ended\n");}
         if (serial) {Serial.print("================================\n");}
@@ -65,7 +89,7 @@ void setup() {
     if (serial) {Serial.print("> Braccio initialised\n");}
 
     // Wait
-    delay(1000*1);
+    delay(1000);
 
     // Test claw
     if (serial) {Serial.print("> Claw\n");}
@@ -111,25 +135,46 @@ void loop() {
 
 void setup() {
     // Initialize UART
-    Serial.begin(115200);
-    serial = (Serial) ? true : false;
+    initUART();
+
+    // Initialize builtin LED
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LOW);
+
+    // Wait 1 second
+    delay(1000);
 
     // Initialize arm
-    if (!baInit()) {
-        // panic();
+    if (!baInit(BA_DEFAULT_SOFT_START, conn)) {
+        panic();
     }
-    delay(1000*1); // wait 1 second
 
-    // Vertical position
-    testMove(0.0f, 90.0f, 90.0f, 90.0f, 90.0f, 180.0f);
+    // Initialize setpoint control
+    timeLastSetpoint = millis();
 }
 
 void loop() {
-    // Nothing
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(1000*1);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(1000*1);
+    // Read and update setpoints
+    float buffer[6];
+    if (newSetpoint(buffer)) {
+        // Update setpoints
+        pos.base = buffer[0];
+        pos.joint1 = buffer[1];
+        pos.joint2 = buffer[2];
+        pos.joint3 = buffer[3];
+        pos.wrist = buffer[4];
+        pos.claw = buffer[5];
+        baUpdateTarget(pos);
+
+        // Update timestamp
+        timeLastSetpoint = millis();
+    }
+
+    // Check for timeout of any new valid setpoints
+    if ((millis()-timeLastSetpoint) > TIMEOUT_SETPOINT) {safe();}
+
+    // Move the Braccio arm slightly
+    baStep();
 }
 
 #endif
@@ -144,6 +189,16 @@ void panic() {
     while(true);
 }
 
+void safe() {
+    pos.base = 90.0f;
+    pos.joint1 = 0.0f;
+    pos.joint2 = 180.0f;
+    pos.joint3 = 0.0f;
+    pos.wrist = 90.0f;
+    pos.claw = 0.0f;
+    baUpdateTarget(pos);
+}
+
 void testMove(float base, float joint1, float joint2, float joint3, float wrist, float claw) {
     pos.base = base;
     pos.joint1 = joint1;
@@ -152,7 +207,7 @@ void testMove(float base, float joint1, float joint2, float joint3, float wrist,
     pos.wrist = wrist;
     pos.claw = claw;
     baMove(pos);
-    delay(1000*1);
+    delay(1000);
 }
 
 void testResetPos() {

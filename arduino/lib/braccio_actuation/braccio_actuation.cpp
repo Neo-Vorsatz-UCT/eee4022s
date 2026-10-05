@@ -41,8 +41,8 @@ Art by               \   /             \   \\
 #define SLOT_2 10
 #define SLOT_3 9
 #define SLOT_4 6
-#define SLOT_5 3
-#define SLOT_6 5
+#define SLOT_5 5
+#define SLOT_6 3
 static const int SLOTS[] = {SLOT_1, SLOT_2, SLOT_3, SLOT_4, SLOT_5, SLOT_6};
 
 // Initial target
@@ -281,6 +281,7 @@ bool baSetPosition(vector_t position) {
     currentTarget = position;
     currentFilter = position;
     setPositionTrusted(position);
+    prevTime = millis(); // update time
     
     // Return whether the position was within the bounds or not
     return bounded;

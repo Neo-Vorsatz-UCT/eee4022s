@@ -18,8 +18,7 @@
 #define UART_BAUD 250000 // baud rate for UART
 #define UART_TX_PIN 17 // transmission pin for UART
 #define UART_RX_PIN 16 // reception pin for UART
-#define UART_HEAD_0 0xC0 // first byte in the start-marker
-#define UART_HEAD_1 0xDE // second byte in the start-marker
+static const uint8_t UART_HEAD[2] = {0xC0, 0xDE}; // the start-marker
 
 // FUNCTIONS ================================
 
@@ -41,14 +40,11 @@ void initUART() {
 }
 
 void sendUART(const uint8_t *payload, size_t len) {
-    // Create header, which helps identify where a message starts
-    uint8_t header[3] = {UART_HEAD_0, UART_HEAD_1, (uint8_t)len};
-
     // Create Circular Redundancy Check value
     uint16_t crc = esp_rom_crc16_le(0, payload, len);
 
     // Send bytes
-    uart_write_bytes(UART_NUM, header, 3); // send header
+    uart_write_bytes(UART_NUM, UART_HEAD, 2); // send header
     uart_write_bytes(UART_NUM, payload, len); // send payload
     uart_write_bytes(UART_NUM, (uint8_t*)(&crc), 2); // send CRC
 }
