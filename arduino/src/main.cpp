@@ -4,7 +4,7 @@
     Last updated: 5 October 2026
 */
 
-// #define RUN_TEST // Uncomment this to run the test script
+#define RUN_TEST // Uncomment this to run the test script
 
 // External includes
 #include <Arduino.h>
@@ -34,12 +34,12 @@ void panic();
  * @param write The setpoint angle for the wrist
  * @param claw The setpoint angle for the claw
  */
-void move(int base, int joint1, int joint2, int joint3, int wrist, int claw);
+void testMove(float base, float joint1, float joint2, float joint3, float wrist, float claw);
 
 /**
- * @brief Resets the position of the arm to the default/safe position
+ * @brief Resets the position of the arm to the default position
  */
-void resetPos();
+void testResetPos();
 
 // MAIN ================================
 
@@ -47,7 +47,7 @@ void resetPos();
 
 void setup() {
     // Initialize serial
-    Serial.begin(9600);
+    Serial.begin(115200);
     serial = (Serial) ? true : false;
     if (serial) {Serial.print("================================\n");}
     if (serial) {Serial.print("{ Program started\n");}
@@ -69,34 +69,34 @@ void setup() {
 
     // Test claw
     if (serial) {Serial.print("> Claw\n");}
-    move(90, 0, 180, 0, 90, 0);
-    resetPos();
+    testMove(90.0f, 0.0f, 180.0f, 0.0f, 90.0f, 0.0f);
+    testResetPos();
 
     // Test wrist
     if (serial) {Serial.print("> Wrist\n");}
-    move(90, 0, 180, 0, 0, 180);
-    move(90, 0, 180, 0, 180, 180);
-    resetPos();
+    testMove(90.0f, 0.0f, 180.0f, 0.0f, 0.0f, 180.0f);
+    testMove(90.0f, 0.0f, 180.0f, 0.0f, 180.0f, 180.0f);
+    testResetPos();
 
     // Test joint3
     if (serial) {Serial.print("> Joint3\n");}
-    move(90, 0, 180, 90, 90, 180);
-    resetPos();
+    testMove(90.0f, 0.0f, 180.0f, 90.0f, 90.0f, 180.0f);
+    testResetPos();
 
     // Test joint1
     if (serial) {Serial.print("> Joint1\n");}
-    move(90, 90, 135, 0, 90, 180);
+    testMove(90.0f, 90.0f, 135.0f, 0.0f, 90.0f, 180.0f);
 
     // Test joint2
     if (serial) {Serial.print("> Joint2\n");}
-    move(90, 90, 90, 0, 90, 180);
+    testMove(90.0f, 90.0f, 90.0f, 0.0f, 90.0f, 180.0f);
 
     // Test base
     if (serial) {Serial.print("> Base\n");}
-    move(0, 90, 90, 0, 90, 180);
-    move(180, 90, 90, 0, 90, 180);
-    move(90, 90, 90, 0, 90, 180);
-    resetPos();
+    testMove(0.0f, 90.0f, 90.0f, 0.0f, 90.0f, 180.0f);
+    testMove(180.0f, 90.0f, 90.0f, 0.0f, 90.0f, 180.0f);
+    testMove(90.0f, 90.0f, 90.0f, 0.0f, 90.0f, 180.0f);
+    testResetPos();
 
     // End
     if (serial) {Serial.print("} Program ended\n");}
@@ -112,15 +112,24 @@ void loop() {
 void setup() {
     // Initialize UART
     Serial.begin(115200);
+    serial = (Serial) ? true : false;
 
     // Initialize arm
     if (!baInit()) {
-        panic();
+        // panic();
     }
+    delay(1000*1); // wait 1 second
+
+    // Vertical position
+    testMove(0.0f, 90.0f, 90.0f, 90.0f, 90.0f, 180.0f);
 }
 
 void loop() {
     // Nothing
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(1000*1);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(1000*1);
 }
 
 #endif
@@ -135,7 +144,7 @@ void panic() {
     while(true);
 }
 
-void move(float base, float joint1, float joint2, float joint3, float wrist, float claw) {
+void testMove(float base, float joint1, float joint2, float joint3, float wrist, float claw) {
     pos.base = base;
     pos.joint1 = joint1;
     pos.joint2 = joint2;
@@ -146,6 +155,6 @@ void move(float base, float joint1, float joint2, float joint3, float wrist, flo
     delay(1000*1);
 }
 
-void resetPos() {
-    move(90.0f, 0.0f, 180.0f, 0.0f, 90.0f, 180.0f);
+void testResetPos() {
+    testMove(90.0f, 0.0f, 180.0f, 0.0f, 90.0f, 180.0f);
 }

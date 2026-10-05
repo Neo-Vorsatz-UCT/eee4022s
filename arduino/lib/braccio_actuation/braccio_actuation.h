@@ -2,7 +2,7 @@
     Module to handle the actuation of the Braccio arm
     Header file
     Author: Neo Vorsatz
-    Last updated: 26 July 2026
+    Last updated: 5 October 2026
 */
 
 /*

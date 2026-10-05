@@ -2,7 +2,7 @@
     Module to handle the actuation of the Braccio arm
     Implementation file
     Author: Neo Vorsatz
-    Last updated: 26 July 2026
+    Last updated: 5 October 2026
 */
 
 /*
@@ -97,7 +97,7 @@ static Servo clawServo;
 
 // Low pass filter
 static unsigned long prevTime; // previous time relevant to the filter, in milliseconds
-static float filterTau = 0.333f; // time constant for one stage of LPF
+static float filterTau = 333.0f; // time constant for one stage of LPF, in milliseconds
 /*
     By default, we want to reach 95% of the setpoint within 100ms.
     This can indirectly be reconfigured via `baSetFilterTau()` or `baSetFilterFreq()`.
@@ -278,8 +278,10 @@ bool baSetPosition(vector_t position) {
     bool bounded = baBoundPosition(&position);
 
     // Set position
+    currentTarget = position;
+    currentFilter = position;
     setPositionTrusted(position);
-
+    
     // Return whether the position was within the bounds or not
     return bounded;
 }
@@ -298,7 +300,7 @@ bool baUpdateTarget(vector_t target) {
 void baStep() {
     // Apply RC low-pass filter approximation to calculate alpha value
     unsigned long time = millis(); // get current time elapsed
-    float deltaT = (time-prevTime)/1000; // calculate time passed, in seconds
+    float deltaT = (time-prevTime); // calculate time passed, in milliseconds
     float alpha = deltaT/(filterTau+deltaT); // calculate alpha
     prevTime = time; // update previous time
 
@@ -318,8 +320,8 @@ void baStep() {
     expSmooth(&currentPos.wrist, currentFilter.wrist, alpha);
     expSmooth(&currentPos.claw, currentFilter.claw, alpha);
 
-    // Set the servos while verifying bounds
-    baSetPosition(currentPos); // note: this adjusts `currentPos` if outside bounds
+    // Set the servos
+    setPositionTrusted(currentPos);
 }
 
 bool baMove(vector_t target) {
@@ -337,11 +339,11 @@ bool baMove(vector_t target) {
 }
 
 void baSetFilterTau(float tau) {
-    filterTau = tau;
+    filterTau = tau*1000; // convert from seconds to milliseconds
 }
 
 void baSetFilterFreq(float freq) {
-    filterTau = 1.0f/(2.0f*3.14f*freq);
+    filterTau = 1000.0f/(2.0f*3.14f*freq); // convert from Hertz to milliseconds
 }
 
 // MANAGEMENT ================================
