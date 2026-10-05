@@ -1,10 +1,10 @@
 /*
     Program to control the Arduino, which is responsible for actuation
     Author: Neo Vorsatz
-    Last updated: 26 July 2026
+    Last updated: 5 October 2026
 */
 
-#define RUN_TEST // Uncomment this to run the test script
+// #define RUN_TEST // Uncomment this to run the test script
 
 // External includes
 #include <Arduino.h>
@@ -19,8 +19,26 @@ bool serial;
 
 // FUNCTION DECLARATIONS ================================
 
+/**
+ * @brief Panic function to turn on the builtin LED, and halt execution
+ */
+void panic();
+
+/**
+ * @brief Moves to a given setpoint using the blocking-movement version from `braccio_actuation`, then delays for 1 second
+ * 
+ * @param base The setpoint angle for the base
+ * @param joint1 The setpoint angle for the first joint
+ * @param joint2 The setpoint angle for the second joint
+ * @param joint3 The setpoint angle for the third joint
+ * @param write The setpoint angle for the wrist
+ * @param claw The setpoint angle for the claw
+ */
 void move(int base, int joint1, int joint2, int joint3, int wrist, int claw);
 
+/**
+ * @brief Resets the position of the arm to the default/safe position
+ */
 void resetPos();
 
 // MAIN ================================
@@ -92,7 +110,13 @@ void loop() {
 #else
 
 void setup() {
-    // Nothing
+    // Initialize UART
+    Serial.begin(115200);
+
+    // Initialize arm
+    if (!baInit()) {
+        panic();
+    }
 }
 
 void loop() {
@@ -103,7 +127,15 @@ void loop() {
 
 // FUNCTION DEFINITIONS ================================
 
-void move(int base, int joint1, int joint2, int joint3, int wrist, int claw) {
+void panic() {
+    // Turn on LED to indicate error
+    digitalWrite(LED_BUILTIN, HIGH);
+    
+    // Freeze the program
+    while(true);
+}
+
+void move(float base, float joint1, float joint2, float joint3, float wrist, float claw) {
     pos.base = base;
     pos.joint1 = joint1;
     pos.joint2 = joint2;
@@ -115,5 +147,5 @@ void move(int base, int joint1, int joint2, int joint3, int wrist, int claw) {
 }
 
 void resetPos() {
-    move(90, 0, 180, 0, 90, 180);
+    move(90.0f, 0.0f, 180.0f, 0.0f, 90.0f, 180.0f);
 }

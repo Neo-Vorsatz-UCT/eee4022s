@@ -77,13 +77,7 @@ static const vector_t INIT_TARGET = {
 #define CLAW_MIN 10.0f
 #define CLAW_MAX 73.0f
 
-// Deadband
-#define CONTROL_I_LIMIT 20.0f // maximum force from integral
-#define CONTROL_D_LIMIT 10.0f // maximum force from differential
-#define DEAD_BAND 0.0f // deadband to elimate small forces from becoming unstable
-
-// Movement
-#define MOVE_STEP 1.0f // step size
+// Blocking movement
 #define MOVE_DELAY 10 // delay between steps, in milliseconds
 
 // VARIABLES ================================
@@ -91,9 +85,7 @@ static const vector_t INIT_TARGET = {
 // Vectors describing the motion of the arm
 static vector_t currentTarget; // target position
 static vector_t currentPos; // position
-static vector_t currentVel; // velocity
-static vector_t prevError; // previous error
-static vector_t integralError; // integral error
+static vector_t currentFilter; // output of 1st LPF, input of 2nd LPF
 
 // Servo motors
 static Servo baseServo;
@@ -103,14 +95,33 @@ static Servo joint3Servo;
 static Servo wristServo;
 static Servo clawServo;
 
-// Software kinetics
-static float controlP = 0.002f; // proportional control gain
-static float controlI = 0.0f; // integral control gain
-static float controlD = 0.12f; // differential control gain
-
-// 0.01 0.0 0.17
+// Low pass filter
+static unsigned long prevTime; // previous time relevant to the filter, in milliseconds
+static float filterTau = 0.333f; // time constant for one stage of LPF
+/*
+    By default, we want to reach 95% of the setpoint within 100ms.
+    This can indirectly be reconfigured via `baSetFilterTau()` or `baSetFilterFreq()`.
+    This requirement makes 3*tau=0.1 => tau=0.0333 (tau is the time constant).
+*/
 
 // HELPER FUNCTIONS ================================
+
+/**
+ * @brief Converts a joint angle into PWM width, in microseconds
+ * 
+ * @param angle The angle of the joint
+ * 
+ * @return The PWM width, in microseconds
+ */
+static inline int angleToPWM(float angle) {
+    /*
+        This conversion comes from the specifications of
+        the SpringRC SR-311 and SpringRC SR-431 servo motors.
+        A PWM width of 500 microseconds gives 0 degrees, and 2500 microseconds gives 180 degrees.
+        This function linearly interpolates.
+    */
+    return 500+(int)(angle/180.f*(2500.0f-500.0f));
+}
 
 /**
  * @brief Sets the position of the arm, without checking bounds
@@ -122,12 +133,12 @@ static void setPositionTrusted(vector_t position) {
     currentPos = position;
 
     // Set servo motors
-    baseServo.write((int)position.base);
-    joint1Servo.write((int)position.joint1);
-    joint2Servo.write((int)position.joint2);
-    joint3Servo.write((int)position.joint3);
-    wristServo.write((int)position.wrist);
-    clawServo.write((int)position.claw);
+    baseServo.writeMicroseconds(angleToPWM(position.base));
+    joint1Servo.writeMicroseconds(angleToPWM(position.joint1));
+    joint2Servo.writeMicroseconds(angleToPWM(position.joint2));
+    joint3Servo.writeMicroseconds(angleToPWM(position.joint3));
+    wristServo.writeMicroseconds(angleToPWM(position.wrist));
+    clawServo.writeMicroseconds(angleToPWM(position.claw));
 }
 
 /**
@@ -147,40 +158,14 @@ static void bitBangPWM(unsigned int onTime) {
 }
 
 /**
- * @brief Calculates the force for a joint
+ * @brief Updates an output using a simple exponential smoothing algorithm
  * 
- * @param write The address to write the force to
- * @param target The target position of the joint
- * @param position The current position of the joint
- * @param integralError The address of the integral error
- * @param prevError The address of the previous error
+ * @param output The address of the output that will be read and written to
+ * @param input The new value to be applied to the output
+ * @param alpha The alpha value
  */
-static void calcForce(float* write, float target, float position, float* integralError, float* prevError) {
-    // Initialize
-    float force;
-    *write = 0.0f;
-
-    // Calculate error
-    float error = target-position;
-
-    // Proportional control
-    *write += controlP*error;
-
-    // Integral control
-    force = controlI*(*integralError);
-    if (force<-CONTROL_I_LIMIT) {force = -CONTROL_I_LIMIT;}
-    if (force>CONTROL_I_LIMIT) {force = CONTROL_I_LIMIT;}
-    *write += force;
-
-    // Differential control
-    force = controlD*(error-*prevError);
-    if (force<-CONTROL_D_LIMIT) {force = -CONTROL_D_LIMIT;}
-    if (force>CONTROL_D_LIMIT) {force = CONTROL_D_LIMIT;}
-    *write += force;
-
-    // Update errors
-    *integralError += error;
-    *prevError = error;
+static void expSmooth(float* output, float input, float alpha) {
+    *output = (1-alpha)*(*output)+alpha*input;
 }
 
 // INITIALIZERS AND CREATION ================================
@@ -193,18 +178,16 @@ bool baInit(int softStart, const int conn[6]) {
     }
 
     // Initialize servos
-    if (baseServo.attach(SLOTS[conn[0]])==INVALID_SERVO) {return false;}
-	if (joint1Servo.attach(SLOTS[conn[1]])==INVALID_SERVO) {return false;}
-	if (joint2Servo.attach(SLOTS[conn[2]])==INVALID_SERVO) {return false;}
-	if (joint3Servo.attach(SLOTS[conn[3]])==INVALID_SERVO) {return false;}
-	if (wristServo.attach(SLOTS[conn[4]])==INVALID_SERVO) {return false;}
-	if (clawServo.attach(SLOTS[conn[5]])==INVALID_SERVO) {return false;}
+    if (baseServo.attach(SLOTS[conn[0]], 500, 2500)==INVALID_SERVO) {return false;}
+	if (joint1Servo.attach(SLOTS[conn[1]], 500, 2500)==INVALID_SERVO) {return false;}
+	if (joint2Servo.attach(SLOTS[conn[2]], 500, 2500)==INVALID_SERVO) {return false;}
+	if (joint3Servo.attach(SLOTS[conn[3]], 500, 2500)==INVALID_SERVO) {return false;}
+	if (wristServo.attach(SLOTS[conn[4]], 500, 2500)==INVALID_SERVO) {return false;}
+	if (clawServo.attach(SLOTS[conn[5]], 500, 2500)==INVALID_SERVO) {return false;}
 
     // Initialize vectors
-    currentVel = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-    prevError = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-    integralError = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     currentTarget = INIT_TARGET;
+    currentFilter = INIT_TARGET;
     baSetPosition(INIT_TARGET);
 
     // Soft start
@@ -230,6 +213,9 @@ bool baInit(int softStart, const int conn[6]) {
         digitalWrite(SOFT_START_CONTROL_PIN, HIGH);
     }
 
+    // Mark timestamp
+    prevTime = millis();
+
     // Indicate success
     return true;
 }
@@ -247,10 +233,6 @@ vector_t baGetTarget() {
 
 vector_t baGetPosition() {
     return currentPos;
-}
-
-vector_t baGetVelocity() {
-    return currentVel;
 }
 
 float baGetError() {
@@ -286,7 +268,7 @@ float baGetError() {
 }
 
 bool baAtTarget(float tolerance) {
-    return (baGetError()<BA_POS_TOLERANCE);
+    return (baGetError()<tolerance);
 }
 
 // CONTROLLING ================================
@@ -313,93 +295,31 @@ bool baUpdateTarget(vector_t target) {
     return bounded;
 }
 
-void baStep(float step) {
-    vector_t force;
+void baStep() {
+    // Apply RC low-pass filter approximation to calculate alpha value
+    unsigned long time = millis(); // get current time elapsed
+    float deltaT = (time-prevTime)/1000; // calculate time passed, in seconds
+    float alpha = deltaT/(filterTau+deltaT); // calculate alpha
+    prevTime = time; // update previous time
 
-    // Calculate base force
-    calcForce(
-        &force.base,
-        currentTarget.base,
-        currentPos.base,
-        &integralError.base,
-        &prevError.base
-    );
+    // Update 1st filter outputs using simple exponential smoothing
+    expSmooth(&currentFilter.base, currentTarget.base, alpha);
+    expSmooth(&currentFilter.joint1, currentTarget.joint1, alpha);
+    expSmooth(&currentFilter.joint2, currentTarget.joint2, alpha);
+    expSmooth(&currentFilter.joint3, currentTarget.joint3, alpha);
+    expSmooth(&currentFilter.wrist, currentTarget.wrist, alpha);
+    expSmooth(&currentFilter.claw, currentTarget.claw, alpha);
 
-    // Calculate joint1 force
-    calcForce(
-        &force.joint1,
-        currentTarget.joint1,
-        currentPos.joint1,
-        &integralError.joint1,
-        &prevError.joint1
-    );
-
-    // Calculate joint2 force
-    calcForce(
-        &force.joint2,
-        currentTarget.joint2,
-        currentPos.joint2,
-        &integralError.joint2,
-        &prevError.joint2
-    );
-
-    // Calculate joint3 force
-    calcForce(
-        &force.joint3,
-        currentTarget.joint3,
-        currentPos.joint3,
-        &integralError.joint3,
-        &prevError.joint3
-    );
-
-    // Calculate wrist force
-    calcForce(
-        &force.wrist,
-        currentTarget.wrist,
-        currentPos.wrist,
-        &integralError.wrist,
-        &prevError.wrist
-    );
-
-    // Calculate claw force
-    calcForce(
-        &force.claw,
-        currentTarget.claw,
-        currentPos.claw,
-        &integralError.claw,
-        &prevError.claw
-    );
-    
-    // Adjust the velocity
-    /*
-        Force directly translates to acceleration (change in velocity).
-        This assumes mass=1. To change the effective mass, change the controller gain.
-        Halving the gain behaves like doubling the mass.
-    */
-    currentVel.base += step*force.base;
-    currentVel.joint1 += step*force.joint1;
-    currentVel.joint2 += step*force.joint2;
-    currentVel.joint3 += step*force.joint3;
-    currentVel.wrist += step*force.wrist;
-    currentVel.claw += step*force.claw;
-
-    // Adjust the position
-    currentPos.base += step*currentVel.base;
-    currentPos.joint1 += step*currentVel.joint1;
-    currentPos.joint2 += step*currentVel.joint2;
-    currentPos.joint3 += step*currentVel.joint3;
-    currentPos.wrist += step*currentVel.wrist;
-    currentPos.claw += step*currentVel.claw;
+    // Update 2nd filter outputs using simple exponential smoothing
+    expSmooth(&currentPos.base, currentFilter.base, alpha);
+    expSmooth(&currentPos.joint1, currentFilter.joint1, alpha);
+    expSmooth(&currentPos.joint2, currentFilter.joint2, alpha);
+    expSmooth(&currentPos.joint3, currentFilter.joint3, alpha);
+    expSmooth(&currentPos.wrist, currentFilter.wrist, alpha);
+    expSmooth(&currentPos.claw, currentFilter.claw, alpha);
 
     // Set the servos while verifying bounds
     baSetPosition(currentPos); // note: this adjusts `currentPos` if outside bounds
-
-    //#
-    Serial.print("t: ");
-    Serial.print(currentTarget.joint3);
-    Serial.print(" | p: ");
-    Serial.print(currentPos.joint3);
-    Serial.print("\n");
 }
 
 bool baMove(vector_t target) {
@@ -407,8 +327,8 @@ bool baMove(vector_t target) {
     bool bounded = baUpdateTarget(target);
 
     // Move to the target
-    while (!baAtTarget(MOVE_STEP)) {
-        baStep(MOVE_STEP);
+    while (!baAtTarget(BA_POS_TOLERANCE)) {
+        baStep();
         delay(MOVE_DELAY);
     }
 
@@ -416,10 +336,12 @@ bool baMove(vector_t target) {
     return bounded;
 }
 
-void baSetControllerGain(float proportional, float integral, float differential) {
-    controlP = (proportional>0.0f) ? proportional : 0.0f;
-    controlI = (integral>0.0f) ? integral : 0.0f;
-    controlD = (differential>0.0f) ? differential : 0.0f;
+void baSetFilterTau(float tau) {
+    filterTau = tau;
+}
+
+void baSetFilterFreq(float freq) {
+    filterTau = 1.0f/(2.0f*3.14f*freq);
 }
 
 // MANAGEMENT ================================

@@ -76,7 +76,7 @@ const int BA_DEFAULT_CONN[6] = {BA_M1, BA_M2, BA_M3, BA_M4, BA_M5, BA_M6};
 // INITIALIZERS AND CREATION ================================
 
 /**
- * @brief Initializes the Braccio arm operation.
+ * @brief Initializes the Braccio arm operation
  * 
  * @param softStart The soft start value
  * @param conn The connector arrangement/order. Use `BA_M1`, `BA_M2`, ..., `BA_M6` to reconfigure
@@ -120,13 +120,6 @@ vector_t baGetTarget();
 vector_t baGetPosition();
 
 /**
- * @brief Gets the current velocity of the Braccio arm
- * 
- * @return The current velocity
- */
-vector_t baGetVelocity();
-
-/**
  * @brief Gets the error between the desired position and the current position
  * 
  * @return The sum of squared position errors
@@ -167,12 +160,10 @@ bool baUpdateTarget(vector_t target);
 /**
  * @brief Steps the Braccio arm towards the desired position
  * 
- * @param step The size of the step to take; useful for inconsistent timing calls
- * 
  * @note This function is recommended, and should be called within a loop, along with `baUpdateTarget`.
  * @note This function is computationally expensive.
  */
-void baStep(float step=1.0f);
+void baStep();
 
 /**
  * @brief Handles the movement of the Braccio arm completely
@@ -188,16 +179,21 @@ void baStep(float step=1.0f);
 bool baMove(vector_t target);
 
 /**
- * @brief Sets the controller gains for the fake kinetics
+ * @brief Sets the time constant for 1 stage of the cascaded 2nd order low-pass filter
  * 
- * @param proportional The proportional gain
- * @param integral The integral gain
- * @param differential The differential gain
- * 
- * @note It's not recommended to do a control theory analysis. Rather just tune the controller.
- * @note Both gains can't be negative
+ * @param tau The new time constant
  */
-void baSetControllerGain(float proportional, float integral, float differential);
+void baSetFilterTau(float tau);
+
+/**
+ * @brief Sets the cutoff frequency (Hz) for 1 stage of the cascaded 2nd order low-pass filter
+ * 
+ * @param freq The new cutoff frequency
+ * 
+ * @note The filter's characteristic is stored as a time constant (tau), making `baSetFilterTau()` more efficient.
+ * @note You can manually calculate the time constant as: tau=1/(2*pi*freq)
+ */
+void baSetFilterFreq(float freq);
 
 // MANAGEMENT ================================
 

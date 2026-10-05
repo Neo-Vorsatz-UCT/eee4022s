@@ -5,6 +5,10 @@ This implementation offers more functionality, with more granular control as wel
 A link was provided for more information about the original library, but it appears to be a dead link:
 [Tinkerkit Braccio](http://www.arduino.org/products/tinkerkit/17-arduino-tinkerkit/arduino-tinkerkit-braccio)
 
+Here's an online copy of the instruction manual that comes with the Braccio kit:
+[Braccio Instruction Manual](https://docs.rs-online.com/f6a4/A700000014019596.pdf)<br>
+All of the code examples are obsolete if using this library.
+
 ## Dependencies
 - `Arduino.h`
 - `Servo.h` (from Arduino repository)
