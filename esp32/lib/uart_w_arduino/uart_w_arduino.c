@@ -2,7 +2,7 @@
     Module to handle the UART communication with the Arduino
     Implementation file
     Author: Neo Vorsatz
-    Last updated: 3 October 2026
+    Last updated: 8 October 2026
 */
 
 // External includes
@@ -16,8 +16,8 @@
 
 #define UART_NUM UART_NUM_1 // chosen UART port on ESP32
 #define UART_BAUD 250000 // baud rate for UART
-#define UART_TX_PIN 17 // transmission pin for UART
-#define UART_RX_PIN 16 // reception pin for UART
+#define UART_TX_PIN 12 // transmission pin for UART
+#define UART_RX_PIN 13 // reception pin for UART
 static const uint8_t UART_HEAD[2] = {0xC0, 0xDE}; // the start-marker
 
 // FUNCTIONS ================================
@@ -41,7 +41,7 @@ void initUART() {
 
 void sendUART(const uint8_t *payload, size_t len) {
     // Create Circular Redundancy Check value
-    uint16_t crc = esp_rom_crc16_le(0, payload, len);
+    uint16_t crc = esp_rom_crc16_be(0, payload, len);
 
     // Send bytes
     uart_write_bytes(UART_NUM, UART_HEAD, 2); // send header

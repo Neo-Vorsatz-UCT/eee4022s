@@ -6,6 +6,7 @@
 */
 
 // External includes
+#include <Arduino.h>
 #include <stdint.h>
 #include <util/crc16.h> // CRC
 #include <string.h>

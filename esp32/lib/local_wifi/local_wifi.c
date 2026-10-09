@@ -2,7 +2,7 @@
     Module to handle the connection to a local Wi-Fi network
     Implementation file
     Author: Neo Vorsatz
-    Last updated: 5 October 2026
+    Last updated: 9 October 2026
 */
 
 // External includes
@@ -29,7 +29,8 @@ static const char *WTAG = "wifi";
 #define WIFI_FAIL_BIT BIT1
 
 // mDNS
-static const char MDNS_NAME[] = "_braccio"; // mDNS name - must start with '_'
+static const char MDNS_HOSTNAME[] = "eee4022s-braccio"; // mDNS host name (63 characters max)
+static const char MDNS_SERVICE[] ="_braccio"; // mDNS service name (15 characters max)
 #define PORT_INT 42069 // server port as an int
 
 // VARIABLES ================================
@@ -130,8 +131,10 @@ static void initWiFi(void) {
 static void initMDNS() {
     // Initialize
     mdns_init();
-    mdns_hostname_set(MDNS_NAME+1); // exclude the '_'
-    mdns_service_add(NULL, MDNS_NAME, "_udp", PORT_INT, NULL, 0);
+
+    // Configure hostname and service
+    mdns_hostname_set(MDNS_HOSTNAME);
+    mdns_service_add(NULL, MDNS_SERVICE, "_udp", PORT_INT, NULL, 0);
 }
 
 // API FUNCTIONS ================================

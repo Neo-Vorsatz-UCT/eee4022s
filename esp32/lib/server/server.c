@@ -28,7 +28,7 @@ static const char PSK_ID[] = "eee4022s-braccio-psk"; // identification for PSK
 
 // Miscellaneous
 #define PORT_STR "42069" // server port as a str
-#define IDLE_MS 5000 // idle time until a session is closed, in milliseconds
+#define IDLE_MS 1000 // idle time until a session is closed, in milliseconds
 static const char TAG[] = "dtls_rx"; // task tag
 
 // VARIABLES ================================

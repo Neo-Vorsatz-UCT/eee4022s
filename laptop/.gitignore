@@ -1,4 +1,5 @@
-# Python virtual environment
+# Python
+__pycache__/
 .venv/
 
 # MediaPipe model

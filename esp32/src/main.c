@@ -1,7 +1,7 @@
 /*
     Program to control the ESP32, which is responsible for networking
     Author: Neo Vorsatz
-    Last updated: 5 October 2026
+    Last updated: 8 October 2026
 */
 
 // #define RUN_TEST // Uncomment this to run the test script
@@ -37,7 +37,24 @@ static void taskDTLS(void *arg);
 #ifdef RUN_TEST
 
 void app_main() {
-    // Nothing
+    // Initialize
+    initUART();
+
+    // Define setpoint
+    union {
+        float values[6];
+        uint8_t bytes[6*sizeof(float)];
+    } setpoint;
+    for (int i = 0; i<6; i++) {
+        setpoint.values[i] = 90.f;
+    }
+    setpoint.values[5] = 180.0f; // close the hand
+
+    // Constantly send setpoint
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(10)); // wait 10 milliseconds
+        sendUART(setpoint.bytes, 6*sizeof(float));
+    }
 }
 
 #else
