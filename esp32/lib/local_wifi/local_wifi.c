@@ -30,7 +30,7 @@ static const char *WTAG = "wifi";
 
 // mDNS
 static const char MDNS_HOSTNAME[] = "eee4022s-braccio"; // mDNS host name (63 characters max)
-static const char MDNS_SERVICE[] ="_braccio"; // mDNS service name (15 characters max)
+static const char MDNS_SERVICE[] ="_actuation"; // mDNS service name (15 characters max)
 #define PORT_INT 42069 // server port as an int
 
 // VARIABLES ================================
