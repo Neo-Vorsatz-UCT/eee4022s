@@ -36,7 +36,7 @@ The application areas for robotics continues to expand, in both industrial and h
 
 Operators may not always be able to receive training on how to operate robotic systems, as formal training can be very time consuming for individuals and for companies. Intuitive forms of teleoperation aim to solve this, by reading an operator's natural movements or gestures and mapping these to corresponding commands (such as setpoints) for the robot systems. These natural movements can be observed with computer vision, which is far more accessible than specialised sensory hardware. Regardless of the data capture method, intuitive teleoperation introduces the challenge of mapping human kinematics to corresponding kinematics for robotic limbs, which often aren't anthropomorphic.
 
-Another risks that arises with teleoperation is weak network security. Malicious actors may wish to hijack robotic systems, steal configuration data, or even hold robotics systems under ransom. Teleoperation systems have realtime performance requirements, hence why implementing network security without introducing significant latency is an ongoing discussion.
+Another risk that arises with teleoperation is weak network security. Malicious actors may wish to hijack robotic systems, steal configuration data, or even hold robotics systems under ransom. Teleoperation systems have realtime performance requirements, hence why implementing network security without introducing significant latency is an ongoing discussion.
 
 % Related Work ================================
 \section{Overview}
@@ -150,7 +150,7 @@ The mixed-reality project \cite{bib:teleoperation_mixed_reality} makes use of a 
 
 \newpage
 \textbf{Forward And Backward Reaching Inverse Kinematics} (FABRIK) is a popular type of heuristic numerical method, in which the positions of each joint is iteratively adjusted in a backward (from EE to base) and then forward (base to EE) manner. This is computationally cheaper and easier to implement than gradient methods \cite{bib:ik_FABRIK}, but under very high precision requirements FABRIK struggles to converge.\\
-FABRIK is also very versatile, with with a lot research done into variations for solving different problems. It can be used to solve for multiple EEs. It has also been extended to solve in scenarios where the kinematics are not like a tree, but instead have loops.\\
+FABRIK is also very versatile, with a lot of research done into variations for solving different problems. It can be used to solve for multiple EEs. It has also been extended to solve in scenarios where the kinematics are not like a tree, but instead have loops.\\
 \textbf{Sequential Quadratic Programming} is a Lagrange-based iterative method \cite{bib:ik_SQP} that naturally incorporates secondary optimisations. It optimises a non-linear scalar function, given a vector constraint. SQP converges faster than heuristic methods, but is sensitive to the initial guess. Xu \textit{et al.} \cite{bib:ik_FABRIK_with_SQP} combine FABRIK with SQP by having FABRIK generate the initial guess, and using SQP to converge to a solution.
 
 % broyden-fletcher-goldfarb-shanno algorithm...
@@ -159,7 +159,7 @@ FABRIK is also very versatile, with with a lot research done into variations for
 
 Many other numerical methods exists, generally treating IK as a non-linear optimisation problem, and using algorithms such as Riemannian optimisation or the derivate-free optimisation \cite{bib:ik_FABRIK_with_SQP}. These are not discussed because of their lack in popularity. Some research has also been done in using neural networks to perform parts of computation, thereby reducing reliance on knowledge of the robot's kinematic structure \cite{bib:ik_FABRIK_with_SQP}\cite{bib:ik_FABRIK_with_ANN}. With the aim of extending Jacobian-based methods to soft robots, Fang \textit{et al.} \cite{bib:ik_soft_robots} implemented a neural network to learn the Jacobian computation, and translate the abstractions from simulation into actuation.
 
-Keeping flexibility for future work and improvement in mind, FABRIK is the preferred IK implementation. It offers a very versatile foundation with fast convergence times. For the level of precision on the Braccio (only $1\degree$), FABRIK's lack of precision won't pose a concern. The particular implementation of FABRIK has secondary objectives and joint limit constraints.
+Keeping flexibility for future work and improvement in mind, FABRIK is the preferred IK implementation. It offers a very versatile foundation with fast convergence times. For the level of precision on the Braccio, FABRIK's lack of precision won't pose a concern. The particular implementation of FABRIK needed would have joint limit constraints and possibly secondary objectives.
 
 \newpage
 % Computer Vision ================================
@@ -169,6 +169,8 @@ Considering that the desired kinematic mapping method is end-effector mapping, a
 
 Moeslund and Granum \cite{bib:computer_vision_overview} make note of the common assumptions made in computer vision. Assumptions they list which are acceptable for this project are: \textit{(i) The subject (human arm) remains inside the workspace. (ii) There is no camera motion. (iii) Only one subject (human arm) is in the workspace at the time. (iv) There is no occlusion of the subject. (v) The motion pattern (kinematics) of the subject is known. (vi) There are minimal changes to lighting. (vii) The background is static/uniform. (viii) The camera parameters are known.}\\
 With these assumptions in mind, the robustness of the computer vision pipeline is not as significant of a priority as accuracy and speed.
+
+Monocular depth ambiguity is a common challenge in computer vision, especially when setups with depth cameras and/or multiple cameras are expensive or difficult to configure. Drăgoi \textit{et al.} \cite{bib:teleoperation_intuitive_using_MediaPipeHands} faced monocular depth ambiguity as one of the primary contributions to error in their teleoperation system. They used the apparant hand size (calculated via distance between landmarks) as a proxy for depth. Another common method for depth estimation is to use deep machine learning directly \cite{bib:depth_ambiguity_survey}, such as with denoising diffusion models \cite{bib:denoising_diffusion_for_depth_ambiguity}.
 
 % Wireless Network ================================
 \section{Wireless Network}
