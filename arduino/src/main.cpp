@@ -87,7 +87,7 @@ void setup() {
         if (serial) {Serial.print("! Initialisation failed\n");}
         if (serial) {Serial.print("} Program ended\n");}
         if (serial) {Serial.print("================================\n");}
-        return;
+        panic();
     }
     if (serial) {Serial.print("> Braccio initialised\n");}
 

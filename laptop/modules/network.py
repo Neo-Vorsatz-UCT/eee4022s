@@ -1,7 +1,7 @@
 """
     Module to handle the networking - send the setpoints to the ESP32 over the network via DTLS1.2 (_PSK)
     Author: Neo Vorsatz
-    Last updated: 9 October 2026
+    Last updated: 14 October 2026
 """
 
 # IMPORTS ================================
@@ -12,7 +12,6 @@ import socket # networking with socket of ESP32
 import struct # packing data in raw bytes
 import sys # aborting program if libraries don't exist
 from zeroconf import IPVersion, Zeroconf # mDNS
-import time # timing for the test script
 
 # TYPES ================================
 
@@ -405,6 +404,9 @@ def close_net():
 # MAIN ================================
 
 if __name__ == "__main__":
+    # Imports
+    import time # timing
+
     # Pick sepoints
     setpoints = [90.0, 90.0, 90.0, 90.0, 90.0, 180.0]
 

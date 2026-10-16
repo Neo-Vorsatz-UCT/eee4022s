@@ -189,8 +189,14 @@ impl SerialRobot {
         let n: usize = self.joints.len();
 
         // Calculate initial error
-        let mut diff: Vec3 = self.joints[n-1].position - self.joints[n-2].position; // difference between target and end-effector
-        let mut err: Scalar = diff.sum_sqr(); // sum of squared differences
+        let mut diff: Vec3;
+        let mut err: Scalar = ZERO;
+        diff = self.joints[n-1].position - self.joints[n-2].position; // difference between target and end-effector position
+        err += diff.sum_sqr();
+        diff = self.joints[n-1].axis_link - self.joints[n-2].axis_link; // difference between target and end-effector direction
+        err += diff.sum_sqr();
+        diff = self.joints[n-1].axis_aux - self.joints[n-2].axis_aux; // difference between target and end-effector rotation
+        err += diff.sum_sqr();
         
         // Loop until error reduced or iterations maxed
         let mut i = 0;
@@ -217,9 +223,16 @@ impl SerialRobot {
                 }
             }
 
-            // End iteration
-            diff = self.joints[n-1].position - self.joints[n-2].position; // difference between target and end-effector
-            err = diff.sum_sqr(); // sum of squared differences
+            // Calculate new error
+            err = ZERO;
+            diff = self.joints[n-1].position - self.joints[n-2].position; // difference between target and end-effector position
+            err += diff.sum_sqr();
+            diff = self.joints[n-1].axis_link - self.joints[n-2].axis_link; // difference between target and end-effector direction
+            err += diff.sum_sqr();
+            diff = self.joints[n-1].axis_aux - self.joints[n-2].axis_aux; // difference between target and end-effector rotation
+            err += diff.sum_sqr();
+
+            // Increment number of iterations
             i += 1;
         }
 

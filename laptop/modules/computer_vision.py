@@ -1,13 +1,13 @@
 """
     Module to handle the computer vision - convert hand positions into end-effector targets
     Author: Neo Vorsatz
-    Last updated: 7 October 2026
+    Last updated: 16 October 2026
 """
 
 # IMPORTS ================================
 
 # External
-from math import sqrt
+from math import log
 import time
 import cv2
 import mediapipe as mp
@@ -16,140 +16,8 @@ mptv = mp.tasks.vision
 
 # TYPES ================================
 
-HandLandmarkerResult = mptv.HandLandmarkerResult
-_NDArray = np.typing._NDArray
-
-class PoseHandler():
-    """
-    A class to handle a hand's pose: position, orientation and openness
-    """
-    SLAVE_SPACE_X = 300 # maximum x distance in slave space
-    SLAVE_SPACE_Y = 300 # maximum y distance in slave space
-    SLAVE_SPACE_Z = 300 # maximum z distance in slave space
-    
-    def __init__(self):
-        # Callibration
-        self.offset:_NDArray = np.array([0, 0, 0]) # origin offset
-        self.transform:_NDArray = np.identity(3) # identity matrix
-
-        # Pose
-        self.position:list[float] = [0, 0, 0] # position of the hand
-        self.direction:list[float] = [1, 0, 0] # direction of the hand, normalised
-        self.rotation:list[float] = [0, 1, 0] # auxillary perpendicular axis for rotation, normalised
-        self.openness:float = 1 # distance from pinching action
-
-    def _normalize(self, vector:_NDArray):
-        """
-        Normalises a vector
-
-        Args:
-            vector (_NDArray): The vector to normalise
-        Returns:
-            _NDArray: The normalized version
-        """
-        magnitude = np.linalg.norm(vector)
-        if magnitude != 0:
-            return vector / magnitude
-        else:
-            return vector.copy()
-
-    def callibrate(self, centre:HandLandmarkerResult, right:HandLandmarkerResult, forward:HandLandmarkerResult, up:HandLandmarkerResult) -> bool:
-        """
-        Sets the offsets and scaling factors based off how readings correspond to known positions.
-        This function uses the convention that "right" should be X, "forward" should be Y, and "up" should be Z,
-        which aligns with the inverse kinematics solver
-
-        Args:
-            centre (HandLandmarkerResult): The MediaPipe Hand Landmark Detection result for the centre of the workspace
-            right (HandLandmarkerResult): The MediaPipe Hand Landmark Detection result for the right of the workspace
-            forward (HandLandmarkerResult): The MediaPipe Hand Landmark Detection result for the front of the workspace
-            up (HandLandmarkerResult): The MediaPipe Hand Landmark Detection result for the top of the workspace
-        Returns:
-           bool: Whether the callibration was successful or not
-        """
-        # Get coordinates
-        centre_coord = _get_landmark_coord(centre, _LM_END_EFFECTOR);
-        right_coord = _get_landmark_coord(forward, _LM_END_EFFECTOR);
-        forward_coord = _get_landmark_coord(forward, _LM_END_EFFECTOR);
-        up_coord = _get_landmark_coord(up, _LM_END_EFFECTOR);
-
-        # Create groupings
-        boundary_coords = [right_coord, forward_coord, up_coord] # group the boundary coordinates
-        boundary_dist = [self.SLAVE_SPACE_X, self.SLAVE_SPACE_Y, self.SLAVE_SPACE_Z] # group maximum distances
-
-        # Use the centre to determine the offsets
-        if centre_coord is None:
-            return False
-        self.offset = -1*np.array(centre_coord)
-
-        # Create transformation matrix from slave space to master space
-        array_2d = []
-        for row in range(3):
-            array_2d.append([])
-            for col in range(3):
-                element = (boundary_coords[col][row]-centre_coord[row])/boundary_dist[col]
-                array_2d[row].append(element)
-        slave_to_master = np.array(array_2d)
-
-        # Convert transformation from slave to master into master to slave
-        self.transform = np.linalg.pinv(slave_to_master)
-
-        # Note that the process was successful
-        return True
-
-    def _get_transformed_coord(self, landmarks:HandLandmarkerResult, landmark_index:int) -> _NDArray | None:
-        """
-        Gets the corrected/callibrated x, y and z coordinates of a landmark
-    
-        Args:
-            result (HandLandmarkerResult): The MediaPipe Hand Landmark Detection result
-            landmark_index (int): The index of the landmark
-        Returns:
-            _NDArray: A list of the corrected/callibrated x, y and z coordinates of the landmark
-        """
-        # Get raw coordinates
-        coords = _get_landmark_coord(landmarks, landmark_index)
-        if coords is None:
-            return None
-        coords = np.array(coords)
-
-        # Apply offset
-        coords = np.add(coords, self.offset)
-
-        # Apply transformation
-        return np.dot(self.transform, coords)
-
-    def set_pose(self, landmarks:HandLandmarkerResult):
-        """
-        Sets the position of the pose
-
-        Args:
-            landmarks (HandLandmarkerResult): The MediaPipe Hand Landmark Detection result
-        """
-        # Get coordinates
-        base = self._get_transformed_coord(landmarks, _LM_BASE)
-        middle_finger = self._get_transformed_coord(landmarks, _LM_MIDDLE_FINGER)
-        thumb = self._get_transformed_coord(landmarks, _LM_THUMB)
-        end_effector = self._get_transformed_coord(landmarks, _LM_END_EFFECTOR)
-
-        # Check that coordinates are valid
-        if base is None:
-            return
-
-        # Set position
-        self.position = end_effector.tolist()
-
-        # Set direction
-        self.direction = self._normalize(np.subtract(end_effector, base)).to_list()
-
-        # Get vector from thumb to middle finger
-        thm_to_mid = np.subtract(middle_finger, thumb)
-
-        # Set rotation
-        self.rotation = self._normalize(thm_to_mid).to_list()
-
-        # Set openness
-        self.openness = np.linalg.norm(thm_to_mid)
+_HandLandmarkerResult = mptv.HandLandmarkerResult
+_NDArray = np.typing.NDArray
 
 # CONSTANTS ================================
 
@@ -159,9 +27,17 @@ _CAMERA_INDEX = 0
 # Filepath to model parameters
 _MODEL_PATH = "mediapipe_models/hand_landmarker.task"
 
+# Callibration and mapping
+_SAMPLES = 10 # number of samples for one entry in callibration
+_SLAVE_SPACE_X = 300 # maximum x distance in slave space
+_SLAVE_SPACE_Y = 300 # maximum y distance in slave space
+_SLAVE_SPACE_Z = 300 # maximum z distance in slave space
+_HAND_OPEN_MAX = 400 # maximum distance between thumb and middle finger (weird but whatever)
+_HAND_OPEN_MIN = 200 # minimum distance between thumb and middle finger (weird but whatever)
+
 # Landmarks
 _LM_BASE = 0
-_LM_MIDDLE_FINGER = 12
+_LM_MIDDLE_FINGER = 8#12
 _LM_THUMB = 4
 _LM_END_EFFECTOR = -1 # a fictious landmark that is the midpoint between the thumb and middle finger
 
@@ -172,28 +48,39 @@ _Z = 2
 
 # VARIABLES ================================
 
+# Flags
 _active:bool = False
-_exit_key = None
+
+# Runtime processors
 _video_stream = None
-_latest_result = None
 _hand_landmarker = None
+
+# Configuration
 _start_time:float = None
+
+# Latest data
+_latest_result = None
+_key_press:int = 255 # no key pressed
+
+# Callibration
+_offset:_NDArray = None # offset vector
+_transform:_NDArray = None # transformation matrix
 
 # HELPER FUNCTIONS ================================
 
-def _handle_result(result:HandLandmarkerResult, output_image:mp.Image, timestamp_ms:int):
+def _handle_result(result:_HandLandmarkerResult, output_image:mp.Image, timestamp_ms:int):
     """
     Called asynchronously when MediaPipe finishes analysing a frame
     """
     global _latest_result
     _latest_result = result
 
-def _get_landmark_coord(result:HandLandmarkerResult, landmark_index:int) -> list[float] | None:
+def _get_landmark_coord(result:_HandLandmarkerResult, landmark_index:int) -> list[float] | None:
     """
     Gets the x, y and z coordinates of a landmark, from the first hand detected
 
     Args:
-        result (HandLandmarkerResult): The MediaPipe Hand Landmark Detection result
+        result (_HandLandmarkerResult): The MediaPipe Hand Landmark Detection result
         landmark_index (int): The index of the landmark
     Returns:
         list[float]: A list of the x, y and z coordinates of the landmark
@@ -227,13 +114,13 @@ def _get_landmark_coord(result:HandLandmarkerResult, landmark_index:int) -> list
     coord[_Z] = hand[landmark_index].z
     return coord
 
-def _draw_all_landmarks_on_image(frame, result:HandLandmarkerResult):
+def _draw_all_landmarks_on_image(frame, result:_HandLandmarkerResult):
     """
     Draws hand landmarks and connections onto a BGR numpy frame, in-place
 
     Args:
         frame: The video frame to draw on
-        result (HandLandmarkerResult): The MediaPipe Hand Landmark Detection result
+        result (_HandLandmarkerResult): The MediaPipe Hand Landmark Detection result
     Returns:
         The modified frame
     """
@@ -266,13 +153,13 @@ def _draw_all_landmarks_on_image(frame, result:HandLandmarkerResult):
     # Return
     return frame
 
-def _draw_landmarks(frame, result:HandLandmarkerResult):
+def _draw_landmarks(frame, result:_HandLandmarkerResult):
     """
     Draws the relevant landmarks and connection on the frame, in-place
     
     Args:
         frame: The video frame to draw on
-        result (HandLandmarkerResult): The MediaPipe Hand Landmark Detection result
+        result (_HandLandmarkerResult): The MediaPipe Hand Landmark Detection result
     Returns:
         The modified frame
     """
@@ -302,24 +189,133 @@ def _draw_landmarks(frame, result:HandLandmarkerResult):
     cv2.circle(frame, thumb_pt, 4, (0, 0, 255), -1) # thumb
     cv2.circle(frame, end_effector_pt, 4, (255, 0, 0), -1) # end effector
 
-def _cleanup():
+def _wait_for_key(key:str=""):
     """
-    Clean up any resources used by the computer vision module
+    Continuously updates the video stream and landmarks until a key is pressed.
+    This function is blocking
+
+    Args:
+        key (str): The key to wait for
+    """
+    if len(key)==1:
+        compare = ord(key)
+    else:
+        compare = 255 # no key
+    update_cv()
+    while get_key_press()!=compare:
+        update_cv()
+
+def _avg_coords(coords:list[list[float] | None]) -> list[float]:
+    """
+    Averages a list of coordinates
+
+    Args:
+        coords (list[list[float] | None]): A list of coordinates
+    Returns:
+        list[float]: The averaged coordinate
+    Raises:
+        Exception: If the list is empty or contains no valid coordinates
+    """
+    # Initialize
+    elements = 0
+    average = [0, 0, 0]
+
+    # Sum all valid elements
+    for coord in coords:
+        if coord is not None:
+            elements += 1
+            for i in range(3):
+                average[i] += coord[i]
+
+    # Validate
+    if elements==0:
+        raise ValueError("No valid coordinates to average")
+
+    # Divide by number of elements
+    for i in range(3):
+        average[i] /= elements
+    return average
+
+def _get_avg_end_effector() -> list[float]:
+    """
+    Waits for key-press activation,
+    samples the computer vision multiple times,
+    and averages the end-effector coordinate
+
+    Returns:
+        list[float]: Averaged end-effector coordinate
+    Raises:
+        ValueError: If no hand is in the camera's view
     """
     # Global variables
-    global _active, _video_stream, _hand_landmarker
+    global _latest_result
 
-    # Note that the computer vision is inactive
-    _active = False
+    # Wait for key trigger
+    _wait_for_key()
+    _wait_for_key(" ")
 
-    # Cleanup
-    _hand_landmarker.close()
-    _video_stream.release()
-    cv2.destroyAllWindows()
+    # Get samples
+    coords:list[list[float]] = []
+    for i in range(_SAMPLES):
+        update_cv()
+        coords.append(_get_landmark_coord(_latest_result, _LM_END_EFFECTOR))
+        time.sleep(0.001) # give the asynchronous `_hand_landmarker` time to process
+
+    # Validate
+    try:
+        avg_coord = _avg_coords(coords)
+    except ValueError:
+        raise ValueError("Hand is not visible for callibration")
+
+    # Return average
+    return avg_coord
+
+def _normalize(vector:_NDArray):
+    """
+    Normalises a vector
+
+    Args:
+        vector (_NDArray): The vector to normalise
+    Returns:
+        _NDArray: The normalized version
+    """
+    magnitude = np.linalg.norm(vector)
+    if magnitude != 0:
+        return vector / magnitude
+    else:
+        return vector.copy()
+
+def _get_transformed_coord(landmarks:_HandLandmarkerResult, landmark_index:int) -> _NDArray | None:
+    """
+    Gets the corrected/callibrated x, y and z coordinates of a landmark
+
+    Args:
+        result (_HandLandmarkerResult): The MediaPipe Hand Landmark Detection result
+        landmark_index (int): The index of the landmark
+    Returns:
+        _NDArray: A list of the corrected/callibrated x, y and z coordinates of the landmark
+    """
+    # Global variables
+    global _offset, _transform
+
+    # Get raw coordinates
+    coord = _get_landmark_coord(landmarks, landmark_index)
+    if coord is None:
+        return None
+    coord = np.array(coord)
+
+    # Apply offset
+    coord = np.add(coord, _offset)
+
+    # Apply transformation
+    coord = np.dot(_transform, coord)
+
+    # Return
+    return coord
 
 # API FUNCTIONS ================================
 
-def init_cv(exit_key:str="q"):
+def init_cv():
     """
     Starts the OpenCV video stream and
     creates a MediaPipe landmarker that handles asynchronous hand landmark detection 
@@ -328,16 +324,10 @@ def init_cv(exit_key:str="q"):
         exit_key (str): A single character string representing the key that kills the computer vision pipeline
     """
     # Global variables
-    global _active, _exit_key, _video_stream, _latest_result, _hand_landmarker, _start_time
+    global _active, _video_stream, _hand_landmarker, _start_time, _latest_result
 
     # Note that the computer vision is active
     _active = True
-
-    # Exit key
-    if len(exit_key)==1:
-        _exit_key = exit_key
-    else:
-        _exit_key = "q"
 
     # Camera
     _video_stream = cv2.VideoCapture(_CAMERA_INDEX)
@@ -357,15 +347,48 @@ def init_cv(exit_key:str="q"):
     # Record start time for timestamps
     _start_time = time.time()
 
-def get_landmarks() -> HandLandmarkerResult:
+def calibrate_cv():
     """
-    Returns the latest valid landmark results.
+    Capture critical positions to create a mapping from hand poses to end-effector poses.
+    This function must be called after `init_cv()` and before any instance of `get_target()`
 
-    Returns:
-        HandLandmarkerResult: The latest valid landmark results
+    Raises:
+        ValueError: If the hand was not visible in one of the stages of calibration
     """
-    global _latest_result
-    return _latest_result
+    # Global variables
+    global _latest_result, _offset, _transform
+
+    # Get critical coordinates
+    print("Callibration: Centre")
+    centre_coord = _get_avg_end_effector()
+    print("Callibration: Right")
+    right_coord = _get_avg_end_effector()
+    print("Callibration: Forward")
+    forward_coord = _get_avg_end_effector()
+    print("Callibration: Up")
+    up_coord = _get_avg_end_effector()
+
+    # Create groupings
+    boundary_coords = [right_coord, forward_coord, up_coord] # group the boundary coordinates
+    boundary_dist = [_SLAVE_SPACE_X, _SLAVE_SPACE_Y, _SLAVE_SPACE_Z] # group maximum distances
+
+    # Use the centre to determine the offsets
+    _offset = -1*np.array(centre_coord)
+
+    # Create transformation matrix from slave space to master space
+    array_2d = []
+    for row in range(3):
+        array_2d.append([])
+        for col in range(3):
+            element = (boundary_coords[col][row]-centre_coord[row])/boundary_dist[col]
+            array_2d[row].append(element)
+    slave_to_master = np.array(array_2d)
+
+    # Convert transformation from slave to master into master to slave
+    _transform = np.linalg.pinv(slave_to_master)
+
+    # Confirm success
+    print("Successful callibration")
 
 def update_cv() -> bool:
     """
@@ -375,7 +398,7 @@ def update_cv() -> bool:
         Whether or not the computer vision is active
     """
     # Global variables
-    global _active, _video_stream, _latest_result, _hand_landmarker, _start_time
+    global _active, _video_stream, _latest_result, _hand_landmarker, _start_time, _key_press
 
     # Check activity
     if not _active:
@@ -401,18 +424,102 @@ def update_cv() -> bool:
     # _draw_all_landmarks_on_image(frame, _latest_result)
     cv2.imshow("Hand Landmarks", frame)
 
-    # Check exit condition
-    if cv2.waitKey(1) & 0xFF == ord(_exit_key):
-        _cleanup()
-        return False
+    # Get key press
+    _key_press = cv2.waitKey(1) & 0xFF
+
+    # Return success
     return True
+
+def get_key_press() -> int:
+    """
+    Returns:
+        The ordinal value of the latest key press
+    """
+    global _key_press
+    return _key_press
+
+def get_target() -> tuple[list[list[float]], float] | tuple[None, None]:
+    """
+    Converts the latest HandLandmarkerResult into a target
+
+    Returns:
+        (list[list[float]], float): The target position, direction and rotation
+    """
+    # Get coordinates
+    base = _get_transformed_coord(_latest_result, _LM_BASE)
+    middle_finger = _get_transformed_coord(_latest_result, _LM_MIDDLE_FINGER)
+    thumb = _get_transformed_coord(_latest_result, _LM_THUMB)
+    end_effector = _get_transformed_coord(_latest_result, _LM_END_EFFECTOR)
+
+    # Check that coordinates are valid
+    if base is None:
+        return (None, None)
+
+    # Set position
+    position = end_effector.tolist()
+
+    # Set direction
+    direction = _normalize(np.subtract(end_effector, base)).tolist()
+
+    # Get vector from thumb to middle finger
+    thm_to_mid = np.subtract(middle_finger, thumb)
+
+    # Set rotation
+    rotation = _normalize(thm_to_mid).tolist()
+
+    # Set openness
+    print("Claw | norm:", np.linalg.norm(thm_to_mid), end="") #//
+    openness = 73 + np.linalg.norm(thm_to_mid)*(10-73)/(_HAND_OPEN_MAX-_HAND_OPEN_MIN)
+    print(" | openness:", openness) #//
+
+    # Return
+    return ([position, direction, rotation], openness)
+
+def cleanup_cv():
+    """
+    Clean up any resources used by the computer vision module
+    """
+    # Global variables
+    global _active, _video_stream, _hand_landmarker
+
+    # Note that the computer vision is inactive
+    _active = False
+
+    # Cleanup
+    _hand_landmarker.close()
+    _video_stream.release()
+    cv2.destroyAllWindows()
 
 # MAIN ================================
 
 if __name__ == "__main__":
+    # Imports
+    import sys
+
     # Initialization
     init_cv()
 
-    # Continuously update computer vision
-    while update_cv():
-        pass
+    try:
+        # Calibrate
+        try:
+            calibrate_cv()
+        except (BaseException, ValueError, KeyboardInterrupt) as e:
+            cleanup_cv()
+            print(e)
+            sys.exit() # exit with error
+
+        # Continuously update computer vision
+        while get_key_press() != ord("q"):
+            if not update_cv():
+                break
+            target, openness = get_target()
+            if target is None:
+                print("No hand")
+                pass
+            else:
+                print("End-effector:", round(target[0][_X]), round(target[0][_Y]), round(target[0][_Z])) # print position of end-effector
+    except BaseException as e:
+        print(e)
+
+    # Free memory and processes
+    cleanup_cv()
