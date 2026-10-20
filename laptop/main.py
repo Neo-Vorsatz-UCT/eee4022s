@@ -1,7 +1,7 @@
 """
     Program to handle the operator-side of the Braccio teleoperation
     Author: Neo Vorsatz
-    Last updated: 16 October 2026
+    Last updated: 19 October 2026
 """
 
 # IMPORTS ================================
@@ -14,10 +14,6 @@ import sys # system exit
 import modules.computer_vision as cv
 import modules.network as net
 import modules.inverse_kinematics as ik
-
-# VARIABLES ================================
-
-_valid_target:tuple[list[list[float]],float] = None # latest valid target
 
 # HELPER FUNCTIONS ================================
 
@@ -50,9 +46,6 @@ def _main_loop() -> OSError:
     Raises:
         KeyboardInterrupt: When the computer vision pipeline ends
     """
-    # Global variables
-    global _braccio, _valid_target
-
     # Try to connect
     while not net.connect_net():
         print("Retrying to connect in 1 second")
@@ -65,14 +58,18 @@ def _main_loop() -> OSError:
             if not cv.update_cv() or cv.get_key_press() == ord("q"):
                 raise KeyboardInterrupt # end the program
             target = cv.get_target()
+            # if (target is not None): #//
+            #     print("End-effector:", round(target[0][0][0]), round(target[0][0][1]), round(target[0][0][2])) #// print position of end-effector
+            # else:
+            #     print("End-effector: None") #//
 
             # Perform cleaning and inverse kinematics
             setpoints = ik.get_setpoints(target)
-
+            
             # Send setpoints
             if setpoints is not None:
                 net.send_setpoints(setpoints)
-                pass #//
+            print("=====") # FEEDBACK
             time.sleep(0.01)
 
         # Failed to send packet

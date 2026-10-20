@@ -1,0 +1,57 @@
+% Kinematic Mapping ================================
+\section{Kinematic Mapping}
+
+The inverse kinematics uses the FABRIK algorithm. In particular, it implements an adaptation of FABRIK described by Moreno \textit{et al.} \cite{bib:ik_FABRIK_constraints}, which incorporates movement for more  types of joints (not just ball joints, like in the original FABRIK), as well as constraints on range of motion. The pseudocode for the algorithm can be seen in \autoref{alg:fabrik}, while the pseudocode for each type of joint can be seen in \autoref{app:C_ik_pseudocode}.
+
+\subsection{Algorithm}
+This implementation uses a linked list structure to describe the kinematics and positions of an arbitrary serial manipulator. Like with normal FABRIK \cite{bib:ik_original_FABRIK}, the algorithm iterates through this linked list structure, adjusting positions of joints under the constraints of its previous joints. This process is repeated for both a forward-reaching and backward-reaching stage. The adapation of FABRIK restricts where successive joints can be positioned based on the type of joint that came before, and then corrects the position based on the joint's range of motion, such as [-90\degree, 90\degree].
+
+\begin{algorithm}
+\caption{FABRIK Algorithm}
+\label{alg:fabrik}
+\footnotesize{
+\begin{algorithmic}[1]
+    \Require An array $J$ of joints where $J[0]$ is the base, $J[n-2]$ is the end-effector, and $J[n-1]$ is the target, an acceptable squared error $e$, and a maximum number of forward-backward iterations $m$
+    \Ensure The end-effector is within $e$ of the target, or iterations reach maximum
+    
+    \Function{Fabrik}{$J,e,m$}
+        \LineComment[0]{Loop until error reduced or iterations maxed}
+        \State $error\gets |J[n-1].\vec{pos}-J[n-2].\vec{pos}|^2$
+        \State $error\gets error+|J[n-1].\vec{axis}_{link}-J[n-2].\vec{axis}_{link}|^2$
+        \State $error\gets error+|J[n-1].\vec{axis}_{aux}-J[n-2].\vec{axis}_{aux}|^2$
+        \State $i\gets 0$
+        \While{$i<m$ \textbf{and} $error>e$}
+            \LineComment[1]{Forward reaching}
+            \For{$j\gets (n-2)\text{ to }1$}
+                \If {$J[j+1]$ is a hinge}
+                    \State $\text{ForwardHinge}(J, j)$
+                \ElsIf {$J[j+1]$ is a pivot}
+                    \State $\text{ForwardPivot}(J, j)$
+                \ElsIf {$J[j+1]$ is prismatic \textbf{or} $J[j+1]$ is immovable}
+                    \State $\text{ForwardPrismatic}(J, j)$
+                \EndIf
+            \EndFor
+            \Statex
+
+            \LineComment[1]{Backward reaching}
+            \For{$j\gets 1\text{ to }(n-2)$}
+                \If {$J[j-1]$ is a hinge}
+                    \State $\text{BackwardHinge}(J, j)$
+                \ElsIf {$J[j-1]$ is a pivot}
+                    \State $\text{BackwardPivot}(J, j)$
+                \ElsIf {$J[j-1]$ is prismatic \textbf{or} $J[j-1]$ is immovable}
+                    \State $\text{BackwardPrismatic}(J, j)$
+                \EndIf
+            \EndFor
+            \Statex
+
+            \LineComment[1]{End iteration}
+            \State $error\gets |J[n-1].\vec{pos}-J[n-2].\vec{pos}|^2$
+            \State $error\gets error+|J[n-1].\vec{axis}_{link}-J[n-2].\vec{axis}_{link}|^2$
+            \State $error\gets error+|J[n-1].\vec{axis}_{aux}-J[n-2].\vec{axis}_{aux}|^2$
+            \State $i\gets i+1$
+        \EndWhile
+    \EndFunction
+\end{algorithmic}
+}
+\end{algorithm}

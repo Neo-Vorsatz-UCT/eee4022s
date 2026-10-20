@@ -1,7 +1,7 @@
 """
     Module to handle the computer vision - convert hand positions into end-effector targets
     Author: Neo Vorsatz
-    Last updated: 16 October 2026
+    Last updated: 20 October 2026
 """
 
 # IMPORTS ================================
@@ -13,13 +13,18 @@ import cv2
 import mediapipe as mp
 import numpy as np
 mptv = mp.tasks.vision
+from math import sqrt
 
 # TYPES ================================
 
 _HandLandmarkerResult = mptv.HandLandmarkerResult
+_Coord = list[float]
 _NDArray = np.typing.NDArray
 
 # CONSTANTS ================================
+
+# Low pass filter
+_WINDOW_SIZE = 10
 
 # Chosen camera
 _CAMERA_INDEX = 0
@@ -27,19 +32,22 @@ _CAMERA_INDEX = 0
 # Filepath to model parameters
 _MODEL_PATH = "mediapipe_models/hand_landmarker.task"
 
+# Physical constraints
+_BASE_RADIUS = 100 # distance to stay away form the origin
+
 # Callibration and mapping
 _SAMPLES = 10 # number of samples for one entry in callibration
 _SLAVE_SPACE_X = 300 # maximum x distance in slave space
 _SLAVE_SPACE_Y = 300 # maximum y distance in slave space
 _SLAVE_SPACE_Z = 300 # maximum z distance in slave space
-_HAND_OPEN_MAX = 400 # maximum distance between thumb and middle finger (weird but whatever)
-_HAND_OPEN_MIN = 200 # minimum distance between thumb and middle finger (weird but whatever)
+_GRASP_PAD = 0.2 # how much larger the grasp needs to be to update the bounds
 
 # Landmarks
 _LM_BASE = 0
-_LM_MIDDLE_FINGER = 8#12
+_LM_INDEX_BASE = 5
+_LM_MIDDLE_FINGER = 12 # consider using 8 (tip of index finger)
 _LM_THUMB = 4
-_LM_END_EFFECTOR = -1 # a fictious landmark that is the midpoint between the thumb and middle finger
+_LM_END_EFFECTOR = -1 # a fictitious landmark that is the midpoint between the thumb and middle finger
 
 # Vector components
 _X = 0
@@ -65,6 +73,13 @@ _key_press:int = 255 # no key pressed
 # Callibration
 _offset:_NDArray = None # offset vector
 _transform:_NDArray = None # transformation matrix
+_grasp_max = 40 # maximum distance between grasp
+_grasp_min = 30 # minimum distance between grasp
+
+# Low pass filter
+_past_targets:dict[str,list[_Coord]] = {
+    "pos":[], "dir":[], "rot":[]
+}
 
 # HELPER FUNCTIONS ================================
 
@@ -75,7 +90,25 @@ def _handle_result(result:_HandLandmarkerResult, output_image:mp.Image, timestam
     global _latest_result
     _latest_result = result
 
-def _get_landmark_coord(result:_HandLandmarkerResult, landmark_index:int) -> list[float] | None:
+def _proxy_depth(result:_HandLandmarkerResult) -> float:
+    """
+    Gets the depth of the hand, using the apparent size as a proxy for depth
+
+    Args:
+        result (_HandLandmarkerResult): The MediaPipe Hand Landmark Detection result
+    Returns:
+        float: The depth away from the camera due to apparent size
+    """
+    # Calculate size
+    hand = result.hand_landmarks[0]
+    base_xy:_NDArray = np.array([hand[_LM_BASE].x, hand[_LM_BASE].y])
+    index_base_xy:_NDArray = np.array([hand[_LM_INDEX_BASE].x, hand[_LM_INDEX_BASE].y])
+    size = np.linalg.norm(np.subtract(index_base_xy, base_xy))
+
+    # Calculate depth
+    return 1/size
+
+def _get_landmark_coord(result:_HandLandmarkerResult, landmark_index:int) -> _Coord | None:
     """
     Gets the x, y and z coordinates of a landmark, from the first hand detected
 
@@ -83,10 +116,10 @@ def _get_landmark_coord(result:_HandLandmarkerResult, landmark_index:int) -> lis
         result (_HandLandmarkerResult): The MediaPipe Hand Landmark Detection result
         landmark_index (int): The index of the landmark
     Returns:
-        list[float]: A list of the x, y and z coordinates of the landmark
+        _Coord | None: A list of the x, y and z coordinates of the landmark, or None if there is no hand detected
     """
     # Initialize coordinates
-    coord:list[float] = [None, None, None]
+    coord:_Coord = [None, None, None]
 
     # If the desired landmark is the fictional end effector
     if landmark_index == _LM_END_EFFECTOR:
@@ -101,17 +134,19 @@ def _get_landmark_coord(result:_HandLandmarkerResult, landmark_index:int) -> lis
         # Average the coordinates
         for i in range(3):
             coord[i] = (thumb_coord[i]+middle_finger_coord[i])/2
-        return coord
+    else:
+        # Validate result
+        if result is None or not result.hand_landmarks:
+            return None
 
-    # Validate result
-    if result is None or not result.hand_landmarks:
-        return None
+        # Get landmarks
+        hand = result.hand_landmarks[0]
+        coord[_X] = hand[landmark_index].x
+        coord[_Y] = hand[landmark_index].y
+        coord[_Z] = hand[landmark_index].z
 
-    # Get landmarks
-    hand = result.hand_landmarks[0]
-    coord[_X] = hand[landmark_index].x
-    coord[_Y] = hand[landmark_index].y
-    coord[_Z] = hand[landmark_index].z
+    # Add proxy depth
+    coord[_Z] += _proxy_depth(result)
     return coord
 
 def _draw_all_landmarks_on_image(frame, result:_HandLandmarkerResult):
@@ -185,7 +220,7 @@ def _draw_landmarks(frame, result:_HandLandmarkerResult):
 
     # Draw landmarks
     cv2.circle(frame, base_pt, 4, (0, 0, 255), -1) # base
-    cv2.circle(frame, middle_finger_pt, 4, (0, 0, 255), -1) # middle finger
+    cv2.circle(frame, middle_finger_pt, 4, (0, 255, 255), -1) # middle finger
     cv2.circle(frame, thumb_pt, 4, (0, 0, 255), -1) # thumb
     cv2.circle(frame, end_effector_pt, 4, (255, 0, 0), -1) # end effector
 
@@ -205,14 +240,14 @@ def _wait_for_key(key:str=""):
     while get_key_press()!=compare:
         update_cv()
 
-def _avg_coords(coords:list[list[float] | None]) -> list[float]:
+def _avg_coords(coords:list[_Coord | None]) -> _Coord:
     """
     Averages a list of coordinates
 
     Args:
-        coords (list[list[float] | None]): A list of coordinates
+        coords (list[_Coord | None]): A list of coordinates
     Returns:
-        list[float]: The averaged coordinate
+        _Coord: The averaged coordinate
     Raises:
         Exception: If the list is empty or contains no valid coordinates
     """
@@ -236,14 +271,14 @@ def _avg_coords(coords:list[list[float] | None]) -> list[float]:
         average[i] /= elements
     return average
 
-def _get_avg_end_effector() -> list[float]:
+def _get_avg_end_effector() -> _Coord:
     """
     Waits for key-press activation,
     samples the computer vision multiple times,
     and averages the end-effector coordinate
 
     Returns:
-        list[float]: Averaged end-effector coordinate
+        _Coord: Averaged end-effector coordinate
     Raises:
         ValueError: If no hand is in the camera's view
     """
@@ -255,7 +290,7 @@ def _get_avg_end_effector() -> list[float]:
     _wait_for_key(" ")
 
     # Get samples
-    coords:list[list[float]] = []
+    coords:list[_Coord] = []
     for i in range(_SAMPLES):
         update_cv()
         coords.append(_get_landmark_coord(_latest_result, _LM_END_EFFECTOR))
@@ -270,18 +305,21 @@ def _get_avg_end_effector() -> list[float]:
     # Return average
     return avg_coord
 
-def _normalize(vector:_NDArray):
+def _normalize(vector:_Coord) -> _Coord:
     """
     Normalises a vector
 
     Args:
-        vector (_NDArray): The vector to normalise
+        vector (_Coord): The vector to normalise
     Returns:
-        _NDArray: The normalized version
+        _Coord: The normalized version
     """
-    magnitude = np.linalg.norm(vector)
+    magnitude = sqrt(vector[_X]**2 + vector[_Y]**2 + vector[_Z]**2)
     if magnitude != 0:
-        return vector / magnitude
+        norm = []
+        for i in range(3):
+            norm.append(vector[i] / magnitude)
+        return norm
     else:
         return vector.copy()
 
@@ -312,6 +350,84 @@ def _get_transformed_coord(landmarks:_HandLandmarkerResult, landmark_index:int) 
 
     # Return
     return coord
+
+def _low_pass(coord:_Coord, key:str) -> _Coord:
+    """
+    Performs a low pass filter on the coordinate, assuming the coordinate is valid
+
+    Args:
+        coord (_Coord): The next coordinate
+        key (str): The low pass filter buffer to use
+    Returns:
+        _Coord: The low pass filtered coordinate
+    """
+    # Global variables
+    global _past_targets
+
+    # Append and truncate the buffer
+    _past_targets[key].append(coord)
+    if len(_past_targets[key]) > _WINDOW_SIZE:
+        _past_targets[key].pop(0)
+
+    # Return average
+    return _avg_coords(_past_targets[key])
+
+def _clamp_position(pos:_Coord) -> _Coord:
+    """
+    Clamps a position (in-place editing) into something more reasonable by:
+    - preventing negative y positions (backwards workspace)
+    - preventing negative z positions (below workspace)
+    - preventing positions directly on the base (physically unreachable)
+
+    Args:
+        pos (_Coord): The position to clamp
+    Returns:
+        _Coord: The clamped position
+    """
+    # Prevent negative y
+    if pos[_Y] < 0.0:
+        pos[_Y] = 0.0
+
+    # Prevent negative z
+    if pos[_Z] < 0.0:
+        pos[_Z] = 0.0;
+
+    # Prevent coordinates directly on the base
+    r = sqrt(pos[_X]**2 + pos[_Y]**2 + pos[_Z]**2) # radius from the origin (centre of the base)
+    if r < _BASE_RADIUS: # if the distance is too small
+        if r==0.0: # if the position is at the origin
+            pos[_Y] = _BASE_RADIUS # set the default position to "forward"
+        else:
+            scale = _BASE_RADIUS / r
+            for i in range(3):
+                pos[i] *= scale
+
+    # Return
+    return pos
+
+def _clamp_direction(dir:_Coord, pos:_Coord) -> _Coord:
+    """
+    Clamps a direction (in-place editing) into something more reasonable by:
+    - realigning the direction to what's achievable
+
+    Args:
+        dir (_Coord): The direction to clamp
+        pos (_Coord): The position of the end effector
+    Returns:
+        _Coord: The clamped direction
+    """
+    # Project dir onto place defined by pos and the z axis
+    cross = [ # cross product between position and z unit vector
+        pos[_Y]*(1)-pos[_Z]*(0),
+        pos[_X]*(1)-pos[_Z]*(0),
+        pos[_X]*(0)-pos[_Y]*(0)
+    ]
+    diff = dir[_X]*cross[_X] + dir[_Y]*cross[_Y] + dir[_Z]*cross[_Z] # how much dir protrudes out of the pos-z plane
+    for i in range(3):
+        dir[i] -= diff*cross[i] # project dir onto the pos-z plane
+
+    # Return
+    return dir
 
 # API FUNCTIONS ================================
 
@@ -445,6 +561,9 @@ def get_target() -> tuple[list[list[float]], float] | tuple[None, None]:
     Returns:
         (list[list[float]], float): The target position, direction and rotation
     """
+    # Global variables
+    global _grasp_max, _grasp_min
+
     # Get coordinates
     base = _get_transformed_coord(_latest_result, _LM_BASE)
     middle_finger = _get_transformed_coord(_latest_result, _LM_MIDDLE_FINGER)
@@ -457,20 +576,34 @@ def get_target() -> tuple[list[list[float]], float] | tuple[None, None]:
 
     # Set position
     position = end_effector.tolist()
+    position[_X] = 0.0 # REJECT DEPTH
+    position = _clamp_position(position)
 
     # Set direction
-    direction = _normalize(np.subtract(end_effector, base)).tolist()
+    direction = np.subtract(end_effector, base).tolist()
+    direction[_X] = 0.0 # REJECT DEPTH
+    direction = _normalize(direction)
 
     # Get vector from thumb to middle finger
     thm_to_mid = np.subtract(middle_finger, thumb)
+    if thm_to_mid[_X] < 0:
+        thm_to_mid[_X] *= -1 # correct flaw in model training
+    # print("Claw tips | thumb:", thumb[0], " | middle:", middle_finger[0]) # FEEDBACK
 
     # Set rotation
-    rotation = _normalize(thm_to_mid).tolist()
+    rotation = _normalize(thm_to_mid.tolist())
 
-    # Set openness
-    print("Claw | norm:", np.linalg.norm(thm_to_mid), end="") #//
-    openness = 73 + np.linalg.norm(thm_to_mid)*(10-73)/(_HAND_OPEN_MAX-_HAND_OPEN_MIN)
-    print(" | openness:", openness) #//
+    # Update grasp bounds
+    grasp = np.linalg.norm(thm_to_mid)
+    if grasp > _grasp_max*(1.0+_GRASP_PAD):
+        _grasp_max = grasp
+    elif grasp < _grasp_min*(1.0-_GRASP_PAD):
+        _grasp_min = grasp
+
+    # Calculate openness
+    openness = 73 + grasp*(10-73)/(_grasp_max-_grasp_min)
+    print("Claw | norm:", np.linalg.norm(thm_to_mid), end="") # FEEDBACK
+    print(" | openness:", openness) # FEEDBACK
 
     # Return
     return ([position, direction, rotation], openness)

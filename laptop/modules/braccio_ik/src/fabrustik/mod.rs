@@ -44,11 +44,8 @@ struct Joint {
 pub struct SerialRobot {
     edit_index: usize, // index of joint being edited
     joints: Box<[Joint]>, // joints of the robot
+    prev_iterations: usize, // number of iterations of previous solution
 }
-
-// CONSTANTS ================================
-
-
 
 // CONSTRUCTORS ================================
 
@@ -99,6 +96,7 @@ impl SerialRobot {
         Self {
             edit_index: 0,
             joints: joints.into_boxed_slice(),
+            prev_iterations: 0,
         }
     }
 }
@@ -178,6 +176,29 @@ impl SerialRobot {
         target.set_pos(position, direction, rotation);
     }
 
+    /// Returns the squared error of the end effector compared to the target
+    pub fn get_error(&mut self) -> Scalar {
+        // Initialize
+        let n: usize = self.joints.len(); // number of joints
+        let mut diff: Vec3; // vector describing the difference between target and end-effector
+        let mut error: Scalar = ZERO; // squared error
+
+        // Add position error
+        diff = self.joints[n-1].position - self.joints[n-2].position; // difference between target and end-effector position
+        error += diff.sum_sqr();
+
+        // Add direction error
+        diff = self.joints[n-1].axis_link - self.joints[n-2].axis_link; // difference between target and end-effector direction
+        error += diff.sum_sqr();
+
+        // Add rotation error
+        diff = self.joints[n-1].axis_aux - self.joints[n-2].axis_aux; // difference between target and end-effector rotation
+        error += diff.sum_sqr();
+
+        // Return
+        error
+    }
+
     /// Returns the actuation values needed to reach the target previously set
     /// 
     /// # Arguments
@@ -189,14 +210,7 @@ impl SerialRobot {
         let n: usize = self.joints.len();
 
         // Calculate initial error
-        let mut diff: Vec3;
-        let mut err: Scalar = ZERO;
-        diff = self.joints[n-1].position - self.joints[n-2].position; // difference between target and end-effector position
-        err += diff.sum_sqr();
-        diff = self.joints[n-1].axis_link - self.joints[n-2].axis_link; // difference between target and end-effector direction
-        err += diff.sum_sqr();
-        diff = self.joints[n-1].axis_aux - self.joints[n-2].axis_aux; // difference between target and end-effector rotation
-        err += diff.sum_sqr();
+        let mut err: Scalar = self.get_error();
         
         // Loop until error reduced or iterations maxed
         let mut i = 0;
@@ -223,18 +237,13 @@ impl SerialRobot {
                 }
             }
 
-            // Calculate new error
-            err = ZERO;
-            diff = self.joints[n-1].position - self.joints[n-2].position; // difference between target and end-effector position
-            err += diff.sum_sqr();
-            diff = self.joints[n-1].axis_link - self.joints[n-2].axis_link; // difference between target and end-effector direction
-            err += diff.sum_sqr();
-            diff = self.joints[n-1].axis_aux - self.joints[n-2].axis_aux; // difference between target and end-effector rotation
-            err += diff.sum_sqr();
-
-            // Increment number of iterations
+            // End iteration
+            err = self.get_error();
             i += 1;
         }
+
+        // Record number of iterations
+        self.prev_iterations = i;
 
         // Return actuation values
         let mut actuations: Box<[f32]> = vec![0.0; n-3].into_boxed_slice();
@@ -242,6 +251,11 @@ impl SerialRobot {
             actuations[j-1] = self.joints[j].value.to_num();
         }
         actuations // return
+    }
+
+    /// Returns the number of iterations from the previous call to `solve()`
+    pub fn get_num_iterations(&mut self) -> usize {
+        self.prev_iterations
     }
 }
 
@@ -261,20 +275,36 @@ impl Joint {
         self.position = Vec3::from_coord(position);
 
         // Set direction
-        let dir: Vec3 = Vec3::from_coord(direction);
+        let mut dir: Vec3 = Vec3::from_coord(direction);
         let mag_dir: Scalar = dir.mag();
         if mag_dir == ZERO {
-            panic!("Direction must be non-zero vector");
+            // panic!("Direction must be non-zero vector");
+            dir = Vec3::from_coord([0, 0, 1]); // choose default direction
+            self.axis_link = dir;
+        } else {
+            dir = dir / mag_dir; // normalize
+            self.axis_link = dir;
         }
-        self.axis_link = dir / mag_dir; // normalize
 
         // Set rotation
         let mut rot: Vec3 = Vec3::from_coord(rotation);
         let mut mag_rot: Scalar = rot.mag();
         if mag_rot == ZERO {
-            panic!("Rotation must be non-zero vector");
+            // panic!("Rotation must be non-zero vector");
+            rot = Vec3::from_coord([1, 0, 0]); // choose default rotation
+        } else {
+            rot  = rot / mag_rot; // normalize, in case rot is nearly zero
         }
-        let y: Vec3 = dir.cross(rot); // calculate y-axis
+        let mut y: Vec3 = dir.cross(rot); // calculate y-axis
+        let mag_y: Scalar = y.mag();
+        if mag_y == ZERO { // if y-axis is zero, then rotation is parallel to direction
+            y = if dir.dot(Vec3::from_coord([0, 1,0 ])).abs() < Scalar::from_num(0.9) {
+                // if `dir` isn't parallel to the y-axis, then we can use the y-axis
+                Vec3::from_coord([0, 1, 0])
+            } else {
+                Vec3::from_coord([1, 0, 0]) // use the x-axis
+            }
+        }
         rot = y.cross(dir); // calculate new rotation vector that's guarenteed to be perpendicular
         mag_rot = rot.mag();
         self.axis_aux = rot / mag_rot;

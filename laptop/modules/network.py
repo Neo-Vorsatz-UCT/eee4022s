@@ -1,5 +1,5 @@
 """
-    Module to handle the networking - send the setpoints to the ESP32 over the network via DTLS1.2 (_PSK)
+    Module to handle the networking - send the setpoints to the ESP32 over the network via DTLS1.2 (PSK)
     Author: Neo Vorsatz
     Last updated: 14 October 2026
 """

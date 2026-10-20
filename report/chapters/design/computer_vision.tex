@@ -1,0 +1,6 @@
+% Computer Vision ================================
+\section{Computer Vision}
+
+The computer vision pipeline of choice was inspired by Drăgoi \textit{et al.} \cite{bib:teleoperation_intuitive_using_MediaPipeHands}. OpenCV was used to extract the live video feed of the laptop's camera, which was then fed into Google's MediaPipe Hand Landmark Detection \cite{bib:MediaPipe_Hand_landmarks_detecion}. MediaPipe Hand Landmark Detection provides monocular hand tracking and pose estimation, and is the successor to MediaPipe Hands, as MediaPipe Hands is now deprecated.
+
+Other computer vision pipelines that were considered include Ultralytics' YOLO \cite{bib:Ultralytics_YOLO} and MMPose. The \textbf{YOLO models} are extremely customisable and easily trainable, making them excellent for niche computer vision tasks such as forensics \cite{bib:YOLO_in_forensics}, and overall hand detection, given a good data set \cite{bib:YOLO_in_complex_background}. There are no pretrained models for hand pose estimation, and the time constraints of this project did not allow for training a custom model. \textbf{MMPose} has pretrained models for hand pose estimation, but isn't as accurate as MediaPipe for this specific task \cite{bib:MMPose_versus_MediaPipe}.

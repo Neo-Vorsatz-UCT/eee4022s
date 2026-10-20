@@ -21,18 +21,12 @@ fn braccio_ik(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(init_ik, m)?)?;
     m.add_function(wrap_pyfunction!(set_target, m)?)?;
     m.add_function(wrap_pyfunction!(get_actuations, m)?)?;
+    m.add_function(wrap_pyfunction!(get_num_iterations, m)?)?;
+    m.add_function(wrap_pyfunction!(get_error, m)?)?;
 
     // Return
     Ok(())
 }
-// mod braccio_ik {
-//     use pyo3::prelude::*;
-//     /// Formats the sum of two numbers as string.
-//     #[pyfunction]
-//     fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-//         Ok((a + b).to_string())
-//     }
-// }
 
 // TYPES ================================
 
@@ -59,17 +53,17 @@ fn init_ik() -> PySerialRobot {
     // Base joint
     braccio.conf_joint(
         JointType::Pivot,
-        70.0,
+        68.0,
         true,
-        -90.0,
-        90.0
+        0.0, // REJECT DEPTH (-90.0)
+        0.0 // REJECT DEPTH (90.0)
     );
     braccio.next_joint();
 
     // Arm joint 1
     braccio.conf_joint(
         JointType::Hinge,
-        125.0,
+        123.0,
         true,
         -75.0,
         75.0
@@ -79,7 +73,7 @@ fn init_ik() -> PySerialRobot {
     // Arm joint 2
     braccio.conf_joint(
         JointType::Hinge,
-        125.0,
+        123.0,
         true,
         -90.0,
         90.0
@@ -89,7 +83,7 @@ fn init_ik() -> PySerialRobot {
     // Arm joint 3
     braccio.conf_joint(
         JointType::Hinge,
-        60.0,
+        62.0,
         true,
         -90.0,
         90.0
@@ -99,7 +93,7 @@ fn init_ik() -> PySerialRobot {
     // Wrist
     braccio.conf_joint(
         JointType::Pivot,
-        120.0,
+        125.0,
         true,
         -90.0,
         90.0
@@ -143,4 +137,16 @@ fn get_actuations(wrapper: &mut PySerialRobot, error: f32, max_iterations: usize
 
     // Return values
     Ok(actuations.into_vec())
+}
+
+/// Returns the number of iterations used in the previous `get_actuations` call
+#[pyfunction]
+fn get_num_iterations(wrapper: &mut PySerialRobot) -> PyResult<usize> {
+    Ok(wrapper.inner.get_num_iterations())
+}
+
+/// Returns the number of iterations used in the previous `get_actuations` call
+#[pyfunction]
+fn get_error(wrapper: &mut PySerialRobot) -> PyResult<f32> {
+    Ok(wrapper.inner.get_error().to_num())
 }

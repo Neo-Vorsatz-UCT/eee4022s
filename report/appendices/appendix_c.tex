@@ -1,0 +1,147 @@
+% Appendix C ================================
+\chapter{Inverse Kinematics Pseudocode}\label{app:C_ik_pseudocode}
+
+\begin{algorithm}
+\caption{Move Joint under Forward Prismatic Constraints}
+\label{alg:move_prismatic}
+\footnotesize{
+\begin{algorithmic}[1]
+    \Require An array $J$ of joints, and the index $j$ of the joint being moved,
+    \Ensure Joint $J[j]$ is positioned \& oriented under the forward prismatic constraints of $J[j+1]$
+
+    \Function{ForwardPrismatic}{$J,j$}
+        \LineComment[0]{Shorthand for "previous joint"}
+        \State $P\gets J[j+1]$
+        \Statex
+
+        \LineComment[0]{Update joint orientation}
+        \State $J[j].\vec{axis}_{link}\gets P.\vec{axis}_{link}$
+        \State $J[j].\vec{axis}_{aux}\gets P.\vec{axis}_{aux}$
+        \Statex
+
+        \LineComment[0]{Calculate joint length}
+        \State $\vec{d}\gets P.\vec{pos}-J[j].\vec{pos}$
+        \State $P.value\gets(\vec{d}\cdot J[j].\vec{axis}_{link})-J[j].len_{link}$
+        \Statex
+
+        \LineComment[0]{Check joint limits}
+        \If {$P$ is limited}
+            \If {$P.value>P.max$}
+                \State $P.value\gets P.max$
+            \ElsIf {$P.value<P.min$}
+                \State $P.value\gets P.min$
+            \EndIf
+        \EndIf
+        \Statex
+        
+        \LineComment[0]{Update joint position}
+        \State $J[j].\vec{pos}\gets P.\vec{pos}-J[j].\vec{axis}_{link}(P.value+J[j].len_{link})$
+    \EndFunction
+\end{algorithmic}
+}
+\end{algorithm}
+
+
+\begin{algorithm}
+\caption{Move Joint under Forward Hinge Constraints}
+\label{alg:move_hinge}
+\footnotesize{
+\begin{algorithmic}[1]
+    \Require An array $J$ of joints, and the index $j$ of the joint being moved
+    \Ensure Joint $J[j]$ is positioned \& oriented under the forward hinge constraints of $J[j+1]$
+
+    \Function{ForwardHinge}{$J,j,dir$}
+        \LineComment[0]{Shorthand for "previous joint"}
+        \State $P\gets J[j+1]$
+        \Statex
+
+        \LineComment[0]{Project distance $\vec{d}$ onto the plane perpendicular to $P.\vec{axis}_{aux}$}
+        \State $\vec{d}\gets P.\vec{pos}-J[j].\vec{pos}$
+        \State $\vec{l}\gets\vec{d}-(\vec{d}\cdot P.\vec{axis}_{aux})P.\vec{axis}_{aux}$
+        \Statex
+
+        \LineComment[0]{Update joint orientation}
+        \State $mag\_l \gets |\vec{l}|$
+        \If {$mag\_l=0$}
+            \State $J[j].\vec{axis}_{link}\gets P.\vec{axis}_{link}$
+        \Else
+            \State $J[j].\vec{axis}_{link}\gets (\vec{l}/mag\_l)$
+        \EndIf
+        \State $J[j].\vec{axis}_{aux}\gets P.\vec{axis}_{aux}$
+        \Statex
+
+        \LineComment[0]{Check joint limits}
+        \State $sign\gets\sgn((J[j].\vec{axis}_{link}\times P.\vec{axis}_{link})\cdot J[j].\vec{axis}_{aux})$
+        \State $P.value\gets\cos^{-1}(J[j].\vec{axis}_{link}\cdot P.\vec{axis}_{link})sign$
+        \If {$P$ is limited}
+            \If {$P.value>P.max$}
+                \State $P.value\gets P.max$
+                \State $J[j].\vec{axis}_{link}\gets P.\vec{axis}_{link}\cos(P.value)$
+                \State $J[j].\vec{axis}_{link}\gets J[j].\vec{axis}_{link}+(P.\vec{axis}_{link}\times P.\vec{axis}_{aux})\sin(P.value)$
+            \ElsIf {$P.value<P.min$}
+                \State $P.value\gets P.min$
+                \State $J[j].\vec{axis}_{link}\gets P.\vec{axis}_{link}\cos(P.value)$
+                \State $J[j].\vec{axis}_{link}\gets J[j].\vec{axis}_{link}+(P.\vec{axis}_{link}\times P.\vec{axis}_{aux})\sin(P.value)$
+            \EndIf
+        \EndIf
+        \Statex
+
+        \LineComment[0]{Update joint position}
+        \State $J[j].\vec{pos}\gets P.\vec{pos}-J[j].\vec{axis}_{link}J[j].len_{link}$
+    \EndFunction
+\end{algorithmic}
+}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Move Joint under Forward Pivot Constraints}
+\label{alg:move_pivot}
+\footnotesize{
+\begin{algorithmic}[1]
+    \Require An array $J$ of joints, and the index $j$ of the joint being moved
+    \Ensure Joint $J[j]$ is positioned \& oriented under the forward pivot constraints of $J[j+1]$
+
+    \Function{ForwardPivot}{$J,j$}
+        \LineComment[0]{Shorthand for "previous joint"}
+        \State $P\gets J[j+1]$
+        \Statex
+
+        \LineComment[0]{Update joint position}
+        \State $J[j].\vec{axis}_{link}\gets P.\vec{axis}_{link}$
+        \State $J[j].\vec{pos}\gets P.\vec{pos}-J[j].\vec{axis}_{link}J[j].len_{link}$
+        \Statex
+
+        \LineComment[0]{Determine auxiliary axis direction}
+        \State $\vec{d}\gets J[j].\vec{pos}-J[j+dir].\vec{pos}$
+        \State $\vec{a}\gets J[j].\vec{axis}_{link}\times\vec{d}$
+        \State $mag\_a\gets|\vec{a}|$
+        \If{$mag\_a=0$}
+            \State $\vec{a}\gets P.\vec{axis}_{aux}$
+        \Else
+            \State $\vec{a}\gets\vec{a}/mag\_a$
+        \EndIf
+        \Statex
+
+        \LineComment[0]{Correct the direction of the auxiliary axis}
+        \State $J[j].\vec{axis}_{aux}\gets\vec{a}\sgn(J[j].\vec{axis}_{aux}\cdot\vec{a})$
+        \Statex
+
+        \LineComment[0]{Check joint limits}
+        \State $sign\gets\sgn((J[j].\vec{axis}_{aux}\times P.\vec{axis}_{aux})\cdot J[j].\vec{axis}_{link})$
+        \State $P.value\gets\cos^{-1}(J[j].\vec{axis}_{aux}\cdot P.\vec{axis}_{aux})sign$
+        \If {$P$ is limited}
+            \If {$P.value>P.max$}
+                \State $P.value\gets P.max$
+                \State $J[j].\vec{axis}_{aux}\gets P.\vec{axis}_{aux}\cos(P.value)$
+                \State $J[j].\vec{axis}_{aux}\gets J[j].\vec{axis}_{aux}-(P.\vec{axis}_{link}\times P.\vec{axis}_{aux})\sin(P.value)$
+            \ElsIf {$P.value<P.min$}
+                \State $P.value\gets P.min$
+                \State $J[j].\vec{axis}_{aux}\gets P.\vec{axis}_{aux}\cos(P.value)$
+                \State $J[j].\vec{axis}_{aux}\gets J[j].\vec{axis}_{aux}-(P.\vec{axis}_{link}\times P.\vec{axis}_{aux})\sin(P.value)$
+            \EndIf
+        \EndIf
+    \EndFunction
+\end{algorithmic}
+}
+\end{algorithm}
+
