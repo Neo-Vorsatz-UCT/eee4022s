@@ -1,7 +1,7 @@
 /*
     Program to control the Arduino, which is responsible for actuation
     Author: Neo Vorsatz
-    Last updated: 7 October 2026
+    Last updated: 21 October 2026
 */
 
 // #define RUN_TEST // Uncomment this to run the test script
@@ -18,9 +18,6 @@
 
 // Braccio servo motor connectors
 const int conn[6] = {BA_M1, BA_M2, BA_M3, BA_M4, BA_M6, BA_M5}; // my Braccio's wrist and claw motors are swapped
-
-// Level shifter pin
-#define LVL_SHIFT_PIN A0 // this pull is pulled low by a 10kR resistor, and must be pulled high
 
 // Safety
 #define TIMEOUT_SETPOINT 1000 // maximum time between valid setpoints before the Braccio moves to the safe position
@@ -152,10 +149,6 @@ void setup() {
         panic();
     }
 
-    // Initialize level shifter
-    pinMode(LVL_SHIFT_PIN, OUTPUT);
-    digitalWrite(LVL_SHIFT_PIN, HIGH);
-
     // Initialize setpoint control
     timeLastSetpoint = millis();
 }
@@ -178,7 +171,12 @@ void loop() {
     }
 
     // Check for timeout of any new valid setpoints
-    if ((millis()-timeLastSetpoint) > TIMEOUT_SETPOINT) {safe();}
+    if ((millis()-timeLastSetpoint) > TIMEOUT_SETPOINT) {
+        baSetFilterTau(0.3f); // slow down movement
+        safe();
+    } else {
+        baSetFilterTau(0.05f); // speed up movement
+    }
 
     // Move the Braccio arm slightly
     baStep();

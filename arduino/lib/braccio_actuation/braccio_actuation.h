@@ -2,7 +2,7 @@
     Module to handle the actuation of the Braccio arm
     Header file
     Author: Neo Vorsatz
-    Last updated: 5 October 2026
+    Last updated: 21 October 2026
 */
 
 /*
@@ -181,7 +181,7 @@ bool baMove(vector_t target);
 /**
  * @brief Sets the time constant for 1 stage of the cascaded 2nd order low-pass filter
  * 
- * @param tau The new time constant
+ * @param tau The new time constant, measured in seconds
  */
 void baSetFilterTau(float tau);
 

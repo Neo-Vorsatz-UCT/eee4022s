@@ -2,7 +2,7 @@
     Module to handle the UART communication with the ESP32
     Implementation file
     Author: Neo Vorsatz
-    Last updated: 5 October 2026
+    Last updated: 21 October 2026
 */
 
 // External includes
@@ -56,7 +56,7 @@ static bool checkCRC(const uint8_t *data, int len, uint16_t crc) {
 // API FUNCTIONS ================================
 
 void initUART() {
-    Serial.begin(250000);
+    Serial.begin(640000);
 }
 
 bool newSetpoint(float *write) {
