@@ -1,7 +1,7 @@
 /*
     Program to control the Arduino, which is responsible for actuation
     Author: Neo Vorsatz
-    Last updated: 21 October 2026
+    Last updated: 22 October 2026
 */
 
 // #define RUN_TEST // Uncomment this to run the test script
@@ -175,7 +175,7 @@ void loop() {
         baSetFilterTau(0.3f); // slow down movement
         safe();
     } else {
-        baSetFilterTau(0.05f); // speed up movement
+        baSetFilterTau(0.1f); // speed up movement
     }
 
     // Move the Braccio arm slightly

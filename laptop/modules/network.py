@@ -1,7 +1,7 @@
 """
     Module to handle the networking - send the setpoints to the ESP32 over the network via DTLS1.2 (PSK)
     Author: Neo Vorsatz
-    Last updated: 14 October 2026
+    Last updated: 22 October 2026
 """
 
 # IMPORTS ================================
@@ -12,6 +12,10 @@ import socket # networking with socket of ESP32
 import struct # packing data in raw bytes
 import sys # aborting program if libraries don't exist
 from zeroconf import IPVersion, Zeroconf # mDNS
+import time
+
+# Internal
+# import modules.data_collection as dc
 
 # TYPES ================================
 
@@ -19,6 +23,10 @@ _vp = ctypes.c_void_p # C void pointer
 _PSK_CLIENT_CB = ctypes.CFUNCTYPE(ctypes.c_uint, _vp, _vp, _vp, ctypes.c_uint, _vp, ctypes.c_uint) # callback
 
 # CONSTANTS ================================
+
+# Benchmarking
+_BENCHMARK = False # make this `False` to omit code that is for benchmarking
+_HD_TRANSMISSION = "transmission (ms)"
 
 # Security
 _PSK = bytes.fromhex("c7676ca068aff229e5ac4e3f8e372103")
@@ -229,6 +237,10 @@ def init_net():
     # Create C type function bindings
     _create_c_bindings()
 
+    # Benchmarking
+    if _BENCHMARK:
+        dc.add_heading(_HD_TRANSMISSION)
+
 def connect_net() -> bool:
     """
     Attempts to connect to the ESP32.
@@ -281,7 +293,7 @@ def connect_net() -> bool:
             _print_failure("SSL_CTX_set_cipher_list")
             raise Exception
 
-        # Give a _PSK callback function
+        # Give a PSK callback function
         def psk_cb(ssl, hint, id_buffer, id_max_len, psk_buffer, psk_max_len) -> int:
             """
             Writes the _PSK identity and value to the given buffer,
@@ -363,6 +375,10 @@ def send_setpoints(setpoints:list[float]):
         if not isinstance(setpoint, float):
             return
 
+    # Benchmarking
+    if _BENCHMARK:
+        bench_start = time.perf_counter()
+
     # Send packet
     FRAME = struct.Struct("<H6f")  # 2 bytes of sequencing + 6 float32 setpoints = 26 bytes
     payload = FRAME.pack(_next_seq_num, *setpoints)
@@ -372,6 +388,11 @@ def send_setpoints(setpoints:list[float]):
 
     # Increment sequence number, with wrap-around
     _next_seq_num = (_next_seq_num+1) & 0xFFFF
+
+    # Benchmarking
+    if _BENCHMARK:
+        bench_delta = (time.perf_counter()-bench_start)*1000
+        dc.record(bench_delta, _HD_TRANSMISSION)
 
 def close_net():
     """
@@ -404,9 +425,6 @@ def close_net():
 # MAIN ================================
 
 if __name__ == "__main__":
-    # Imports
-    import time # timing
-
     # Pick sepoints
     setpoints = [90.0, 90.0, 90.0, 90.0, 90.0, 180.0]
 

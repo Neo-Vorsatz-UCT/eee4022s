@@ -1,13 +1,17 @@
 """
     Module to handle the inverse kinematics - wrapping the `braccio_ik` library
     Author: Neo Vorsatz
-    Last updated: 20 October 2026
+    Last updated: 22 October 2026
 """
 
 # IMPORTS ================================
 
+# External
+import time
+
 # Internal
 import braccio_ik as ik
+import modules.data_collection as dc
 
 # TYPES ================================
 
@@ -15,14 +19,15 @@ _Target = tuple[list[list[float]],float]|tuple[None,None]
 
 # CONSTANTS ================================
 
+# Benchmarking
+_BENCHMARK = True # make this `False` to omit code that is for benchmarking
+_HD_IK_SOLVER = "ik solver (ms)"
+_HD_ITERATIONS = "iterations (#)"
+_HD_SQR_ERR = "sqr err (mm^2)"
+
 # Inverse kinematics solver
 _TARGET_ERR = 1 # target acceptable error
-_MAX_ITER = 100 # maximum number of iterations
-
-# Vector components
-_X = 0
-_Y = 1
-_Z = 2
+_MAX_ITER = 10000 # maximum number of iterations
 
 # VARIABLES ================================
 
@@ -44,6 +49,12 @@ def init_ik():
     # Initialize IK module
     _braccio = ik.init_ik()
 
+    # Benchmarking
+    if _BENCHMARK:
+        dc.add_heading(_HD_IK_SOLVER)
+        dc.add_heading(_HD_ITERATIONS)
+        dc.add_heading(_HD_SQR_ERR)
+
 def get_setpoints(target:_Target) -> list[float] | None:
     """
     Checks the validity of a target, and converts a target into servo motor setpoints
@@ -61,6 +72,10 @@ def get_setpoints(target:_Target) -> list[float] | None:
     if ik_target is None:
         return _valid_setpoints
 
+    # Benchmarking
+    if _BENCHMARK:
+        bench_start = time.perf_counter()
+
     # Perform inverse kinematics
     print("End-effector:", round(ik_target[0][0]), round(ik_target[0][1]), round(ik_target[0][2])) # FEEDBACK
     print("Direction:", round(ik_target[1][0],2), round(ik_target[1][1],2), round(ik_target[1][2],2)) # FEEDBACK
@@ -68,6 +83,13 @@ def get_setpoints(target:_Target) -> list[float] | None:
     ik.set_target(_braccio, *ik_target)
     _valid_setpoints = ik.get_actuations(_braccio, _TARGET_ERR, _MAX_ITER) + [openness]
     print("Setpoint:", round(_valid_setpoints[4])) # FEEDBACK
+
+    # Benchmarking
+    if _BENCHMARK:
+        bench_delta = (time.perf_counter()-bench_start)*1000
+        dc.record(bench_delta, _HD_IK_SOLVER)
+        dc.record(ik.get_num_iterations(_braccio), _HD_ITERATIONS)
+        dc.record(ik.get_error(_braccio), _HD_SQR_ERR)
 
     # Return
     return _valid_setpoints
@@ -77,7 +99,6 @@ def get_setpoints(target:_Target) -> list[float] | None:
 if __name__ == "__main__":
     # Imports
     import network as net
-    import time
     from math import floor
 
     # Desired target

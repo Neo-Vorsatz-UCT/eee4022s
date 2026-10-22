@@ -1,7 +1,7 @@
 """
     Module to handle the computer vision - convert hand positions into end-effector targets
     Author: Neo Vorsatz
-    Last updated: 20 October 2026
+    Last updated: 21 October 2026
 """
 
 # IMPORTS ================================
@@ -15,6 +15,9 @@ import numpy as np
 mptv = mp.tasks.vision
 from math import sqrt
 
+# Internal
+import modules.data_collection as dc
+
 # TYPES ================================
 
 _HandLandmarkerResult = mptv.HandLandmarkerResult
@@ -22,6 +25,12 @@ _Coord = list[float]
 _NDArray = np.typing.NDArray
 
 # CONSTANTS ================================
+
+# Benchmarking
+_BENCHMARK = True # make this `False` to omit code that is for benchmarking
+_HD_FETCH_FRAME = "fetch frame (ms)"
+_HD_LANDMARK = "landmark (ms)"
+_HD_CALC_TARGET = "calc target (ms)"
 
 # Low pass filter
 _WINDOW_SIZE = 10
@@ -87,8 +96,13 @@ def _handle_result(result:_HandLandmarkerResult, output_image:mp.Image, timestam
     """
     Called asynchronously when MediaPipe finishes analysing a frame
     """
-    global _latest_result
+    global _latest_result, _start_time
     _latest_result = result
+
+    # Benchmarking
+    if _BENCHMARK:
+        bench_delta = (time.monotonic()-_start_time)*1000 - timestamp_ms
+        dc.record(bench_delta, _HD_LANDMARK)
 
 def _proxy_depth(result:_HandLandmarkerResult) -> float:
     """
@@ -460,8 +474,14 @@ def init_cv():
     )
     _hand_landmarker = mptv.HandLandmarker.create_from_options(options)
 
+    # Benchmarking
+    if _BENCHMARK:
+        dc.add_heading(_HD_FETCH_FRAME)
+        dc.add_heading(_HD_LANDMARK)
+        dc.add_heading(_HD_CALC_TARGET)
+
     # Record start time for timestamps
-    _start_time = time.time()
+    _start_time = time.monotonic()
 
 def calibrate_cv():
     """
@@ -516,6 +536,10 @@ def update_cv() -> bool:
     # Global variables
     global _active, _video_stream, _latest_result, _hand_landmarker, _start_time, _key_press
 
+    # Benchmarking
+    if _BENCHMARK:
+        bench_start = time.perf_counter()
+
     # Check activity
     if not _active:
         return False
@@ -530,7 +554,7 @@ def update_cv() -> bool:
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
     # Generate timestamp
-    frame_timestamp_ms = int((time.time()-_start_time)*1000)
+    frame_timestamp_ms = int((time.monotonic()-_start_time)*1000)
 
     # Give image to Hand Landmarker
     _hand_landmarker.detect_async(mp_image, frame_timestamp_ms)
@@ -539,6 +563,11 @@ def update_cv() -> bool:
     _draw_landmarks(frame, _latest_result)
     # _draw_all_landmarks_on_image(frame, _latest_result)
     cv2.imshow("Hand Landmarks", frame)
+
+    # Benchmarking
+    if _BENCHMARK:
+        bench_delta = (time.perf_counter()-bench_start)*1000
+        dc.record(bench_delta, _HD_FETCH_FRAME)
 
     # Get key press
     _key_press = cv2.waitKey(1) & 0xFF
@@ -563,6 +592,10 @@ def get_target() -> tuple[list[list[float]], float] | tuple[None, None]:
     """
     # Global variables
     global _grasp_max, _grasp_min
+
+    # Benchmarking
+    if _BENCHMARK:
+        bench_start = time.perf_counter()
 
     # Get coordinates
     base = _get_transformed_coord(_latest_result, _LM_BASE)
@@ -604,6 +637,11 @@ def get_target() -> tuple[list[list[float]], float] | tuple[None, None]:
     openness = 73 + grasp*(10-73)/(_grasp_max-_grasp_min)
     print("Claw | norm:", np.linalg.norm(thm_to_mid), end="") # FEEDBACK
     print(" | openness:", openness) # FEEDBACK
+
+    # Benchmarking
+    if _BENCHMARK:
+        bench_delta = (time.perf_counter()-bench_start)*1000
+        dc.record(bench_delta, _HD_CALC_TARGET)
 
     # Return
     return ([position, direction, rotation], openness)

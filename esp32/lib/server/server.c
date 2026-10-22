@@ -2,7 +2,7 @@
     Module to handle the DTLS server start-up and communication
     Implementation file
     Author: Neo Vorsatz
-    Last updated: 3 October 2026
+    Last updated: 22 October 2026
     Built from the example at: https://github.com/Mbed-TLS/mbedtls/blob/development/programs/ssl/dtls_server.c
 */
 
@@ -14,11 +14,15 @@
 #include "mbedtls/ssl.h"
 #include "mbedtls/ssl_cookie.h"
 #include "mbedtls/timing.h"
+#include "esp_timer.h" // benchmarking
 
 // Internal includes
 #include "server.h"
 
 // CONSTANTS ================================
+
+// Benchmarking
+#define BENCHMARK
 
 // PSK
 static const unsigned char PSK[16] = {
@@ -122,11 +126,20 @@ void newSession() {
 }
 
 int getPacket(uint8_t *write, unsigned long len, uint16_t *lastSeq) {
+    #ifdef BENCHMARK
+    float bench_start = esp_timer_get_time()/1000.0f;
+    float bench_delta = 0;
+    #endif
     int ret;
     while (1) {
         // Read a packet from the session into the buffer
         ret = mbedtls_ssl_read(&ssl, write, len);
-        if (ret==MBEDTLS_ERR_SSL_WANT_READ || ret==MBEDTLS_ERR_SSL_WANT_WRITE) {continue;} // if no data received
+        if (ret==MBEDTLS_ERR_SSL_WANT_READ || ret==MBEDTLS_ERR_SSL_WANT_WRITE) { // if no data received
+            #ifdef BENCHMARK
+            bench_start = esp_timer_get_time()/1000.0f; // update start time
+            #endif
+            continue;
+        }
 
         // Validate
         if (ret<=0) { // timeout/close/error
@@ -139,6 +152,12 @@ int getPacket(uint8_t *write, unsigned long len, uint16_t *lastSeq) {
         uint16_t seq = (write[1]<<8) | write[0]; // assemble sequence number
         if ((int16_t)(seq-*lastSeq)<=0) {continue;} // drop duplicate or old packets
         *lastSeq = seq;
+
+        // Benchmarking
+        #ifdef BENCHMARK
+        bench_delta = esp_timer_get_time()/1000.0f - bench_start; // calculate decryption and verification latency
+        ESP_LOGI(TAG, "latency: %f", bench_delta);
+        #endif
 
         // Return length of payload
         return ret;

@@ -14,6 +14,12 @@ import sys # system exit
 import modules.computer_vision as cv
 import modules.network as net
 import modules.inverse_kinematics as ik
+import modules.data_collection as dc
+
+# CONSTANTS ================================
+
+# Benchmarking
+_BENCHMARK = True # make this `False` to omit code that is for benchmarking
 
 # HELPER FUNCTIONS ================================
 
@@ -58,10 +64,6 @@ def _main_loop() -> OSError:
             if not cv.update_cv() or cv.get_key_press() == ord("q"):
                 raise KeyboardInterrupt # end the program
             target = cv.get_target()
-            # if (target is not None): #//
-            #     print("End-effector:", round(target[0][0][0]), round(target[0][0][1]), round(target[0][0][2])) #// print position of end-effector
-            # else:
-            #     print("End-effector: None") #//
 
             # Perform cleaning and inverse kinematics
             setpoints = ik.get_setpoints(target)
@@ -70,6 +72,12 @@ def _main_loop() -> OSError:
             if setpoints is not None:
                 net.send_setpoints(setpoints)
             print("=====") # FEEDBACK
+
+            # Benchmarking
+            if _BENCHMARK:
+                dc.flush() # write all of the data that has been pending
+
+            # Add delay for network traffic to keep up
             time.sleep(0.01)
 
         # Failed to send packet
@@ -95,6 +103,7 @@ def main():
     finally:
         net.close_net()
         cv.cleanup_cv()
+        dc.finish()
 
 if __name__ == "__main__":
     main()

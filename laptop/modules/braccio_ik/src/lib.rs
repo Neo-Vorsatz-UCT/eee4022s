@@ -145,7 +145,7 @@ fn get_num_iterations(wrapper: &mut PySerialRobot) -> PyResult<usize> {
     Ok(wrapper.inner.get_num_iterations())
 }
 
-/// Returns the number of iterations used in the previous `get_actuations` call
+/// Returns the current squared error
 #[pyfunction]
 fn get_error(wrapper: &mut PySerialRobot) -> PyResult<f32> {
     Ok(wrapper.inner.get_error().to_num())
