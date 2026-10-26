@@ -76,11 +76,11 @@ The direction and rotation are then normalised, before being handed over to the 
 Even with the calibration described above, the range of the operator's openness varied significantly, sometimes ranging from 10mm to 50mm, and other times ranging from 20mm to 300mm, for different sessions. Because of this, the target's openness is calculated using an adaptive range conversion. An initial range of 30 to 40 is set, and whenever the openness exceeds the maximum or falls short of the minimum by 20\%, the range is adjusted to fit the new value. This allows more consistent interpretation of the operator's hand's openness.\\
 The valid actuation values for the Braccio's claw ranges from 10 (completely open) to 73 (completely closed). This is used to calculate the actuation that will best correspond to the operator's openness, using the range conversion in \autoref{eqn_comp_vis:openness}.
 \begin{equation}
-    \text{braccio openness} = 73+\text{hand openness}\times\frac{10-73}{\text{max}-\text{min}}
+    \text{braccio openness} = 73+(\text{hand openness}-\text{min})\times\frac{10-73}{\text{max}-\text{min}}
     \label{eqn_comp_vis:openness}
 \end{equation}
 
 \section{Testing}
-This subsystem is benchmarked on the time taken to fetch a video frame, landmark the frame, and generate a target using the landmarks. This is done using the \verb|monotonic()| function provided by the \verb|time| module. Since MediaPipe processes frames asynchronously with the main thread, the timestamps provided to MediaPipe thread are used as the initial time.
+This subsystem is benchmarked on the time taken to fetch a video frame, landmark the frame, and generate a target using the landmarks. This is done using the \verb|monotonic()| function provided by the \verb|time| module. Since MediaPipe processes frames asynchronously with the main thread, the timestamps provided to the MediaPipe thread are used as the initial time.
 
 Data was generated during a teleoperation task, where a foam cube was picked up, rotated and dropped. A video of this task can be found on \href{https://github.com/Neo-Vorsatz-UCT/eee4022s/blob/main/data/EEE4022S_TDR-04_Demo.mp4}{GitHub}.

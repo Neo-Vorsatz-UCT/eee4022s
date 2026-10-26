@@ -1,7 +1,7 @@
 """
     Module to handle the computer vision - convert hand positions into end-effector targets
     Author: Neo Vorsatz
-    Last updated: 21 October 2026
+    Last updated: 26 October 2026
 """
 
 # IMPORTS ================================
@@ -633,7 +633,7 @@ def get_target() -> tuple[list[list[float]], float] | tuple[None, None]:
         _grasp_min = grasp
 
     # Calculate openness
-    openness = 73 + grasp*(10-73)/(_grasp_max-_grasp_min)
+    openness = 73 + (grasp-_grasp_min)*(10-73)/(_grasp_max-_grasp_min)
     print("Claw | norm:", np.linalg.norm(thm_to_mid), end="") # FEEDBACK
     print(" | openness:", openness) # FEEDBACK
 

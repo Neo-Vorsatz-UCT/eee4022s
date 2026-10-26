@@ -1,2 +1,45 @@
 % Actuation ================================
 \chapter{Actuation}
+
+\section{Braccio Control Library}
+
+Arduino's default library for controlling the Braccio \cite{bib:Braccio} was deemed unfit for this project. The API function to set the Braccio's position increments/decrements the angle of each motor by 1 degree repeatedly, until all motors are at their setpoints. Between each iteration is a delay that is chosen when the function is called.\\
+This implementation introduces several problems:
+\begin{itemize}[nosep]
+    \item The function is blocking, and thus can't change trajectory if a new setpoint is received mid-motion.
+    \item The delay between each iteration is fixed. At moderate speeds, there's a large acceleration at the start and end of the motion, causing the Braccio to jerk.
+    \item Some motors will reach their setpoint before others, making the end-effector's motion not smooth.
+    \item The most precision that can be achieved is 1 degree, not making use of the servo motors full precision. This also makes movement look jittery (quantised) when moving slowly.
+\end{itemize}
+
+A new library was implemented that uses a cooperative multitasking paradigm, where the motors approach their setpoints gradually over multiple function calls, allowing other processes to occur in between. The setpoint is updated with a function call, and the motors are stepped with a different function call.
+
+The function to step the motors determines the new position of the motors using 2nd-order exponential smoothing, shown in \autoref{eqn_act:exp_smoothing}. $\vec{r}$ is the setpoint, $\vec{p}$ is an intermediate variable, $\vec{q}$ is the angle of the motors, and $\alpha$ is the smoothing factor. This way of calculating the next motor positions was chosen because it mimicked a physical system with a mass and damping, reducing jerking at both the start and end of the motion.
+\begin{equation}
+\begin{split}
+    \vec{p}_{i+1}=(1-\alpha)\vec{p}_i+\alpha\vec{r}\\
+    \vec{q}_{i+1}=(1-\alpha)\vec{q}_i+\alpha\vec{p}
+    \label{eqn_act:exp_smoothing}
+\end{split}
+\end{equation}
+
+\newpage
+Choosing a low enough value for $\alpha$ helps with both reducing jerk, and filtering out noise in the setpoints. The desired $\alpha$ can be calculated using a desired time-constant $\tau$, with an RC low-pass filter approximation \cite{bib:exp_smoothing}, shown in \autoref{eqn_act:rc_approx}. The period $T$ at which the motors are stepped is not necessarily constant, so the \verb|millis()| function is used to calculate the time since the last step. A suitable value for $\tau$ that filtered out enough noise was experimentally determined to be 100ms.
+\begin{equation}
+    \alpha=\frac{1}{1+\frac{\tau}{T}}
+    \label{eqn_act:rc_approx}
+\end{equation}
+To command the servo motors into a particular angle, the \verb|writeMicroseconds()| function from the \verb|Servo| library is used to directly control the PWM pulse width, thereby giving more precision. The Braccio uses two types of servo motors, both of which accept a pulse width from 500 to 2500 microseconds and have a range of motion of 180 degrees \cite{bib:springrc_sr311}\cite{bib:springrc_sr431}. Desired angles $\vec{q}$ from the exponential smoothing are converted to pulse widths $\vec{w}$ using a range mapping, shown in \autoref{eqn_act:angle_to_pulse}.
+\begin{equation}
+    \vec{w}=500+(\vec{q}-0)\times\frac{2500-500}{180-0}
+    \label{eqn_act:angle_to_pulse}
+\end{equation}
+The new library also implements soft-start; a feature of the old library that gradually increases power to the servo motors when the Arduino is turned on, as opposed to letting the servo motors jolt into an initial position.
+
+\section{Main Loop}
+The Arduino's main loop continuously gathers bytes from the UART buffer, and searches for a complete payload. If a complete payload is found and verified with CRC16, then the setpoints for the motors are updated. If only a partial payload if found, that partial portion is kept for the next iteration of the main loop.\\
+The Arduino also keeps track of when the latest setpoint update was. If the setpoints have not been updated for over 1 second, then whatever teleoperation task was in progress is likely compromised and so the Arduino resumes a "safe" protocol; it reduces the speed of the Braccio by setting $\tau=300$ms, and sets the setpoint to a retracted position with the claw open. Once a new setpoint is received, the time constant is set back to $\tau=100$ms and operation resumes as normal.\\
+At the end of every iteration of the main loop, the motors are stepped, thereby approaching the setpoint.
+
+\section{Testing}
+This subsystem is benchmarked on the time taken to settle at the setpoint. This is measured by video capturing the Braccio during a step response, using a 30fps camera. This video can be found on \href{https://github.com/Neo-Vorsatz-UCT/eee4022s/blob/main/data/actuation_data.mp4}{GitHub}.
