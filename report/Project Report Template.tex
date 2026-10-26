@@ -5,7 +5,7 @@
 % This file should be is processed with ``pdflatex`` and might need a few modifications if a different processor is chosen.
 
 
-\documentclass[a4paper,12pt]{report}
+\documentclass[a4paper,11pt]{report}
 
 %Include packages you need to use here
 
@@ -14,7 +14,7 @@
 \usepackage{fancyhdr}
 \usepackage{amsmath, amsthm, amssymb}
 \usepackage{lastpage}
-\usepackage{subfigure}
+% \usepackage{subfigure} % deprecated. subcaption is the replacement
 \usepackage{lscape}
 \usepackage{hyphenat}
 \usepackage{setspace}
@@ -36,10 +36,17 @@
 \rhead[]{\thesection}
 \lhead[\thechapter]{}
 
-% Reduce space below Chapter and Section headings
+% Reduce space
 \usepackage{titlesec}
 \titlespacing*{\chapter}{0pt}{0ex}{0ex} % Chapters
 \titlespacing*{\section}{0pt}{0ex}{0ex} % Sections
+\usepackage{enumitem} % Enumerate
+
+% Times New Roman
+\usepackage{newtxtext, newtxmath}
+
+% Two graphics in a single figure
+\usepackage{subcaption}
 
 \begin{document}
  
@@ -49,7 +56,7 @@
 \thispagestyle{empty}
 \mbox{}
 
-\onehalfspacing
+\singlespacing % \onehalfspacing
 \nohyphens{
 \thispagestyle{empty}
 \vskip 40mm
@@ -77,7 +84,7 @@
 
 \pagenumbering{arabic}
 
-% THe files included below are .tex files containing the respective chapters these are already created in this package and you can add to or modify them.
+% The files included below are .tex files containing the respective chapters these are already created in this package and you can add to or modify them.
 \include{chapters/introduction.tex}
 \include{chapters/literature.tex}
 \include{chapters/design.tex}

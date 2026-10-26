@@ -111,10 +111,10 @@ fn init_ik() -> PySerialRobot {
 /// 
 /// * `position` - Position of the target
 /// * `direction` - Direction of the target
-/// * `rotation` - Rotation (auxilliary axis) of the target
+/// * `rotation` - Rotation (auxiliary axis) of the target
 #[pyfunction]
-fn set_target(wrapper: &mut PySerialRobot, position:[f32; 3], direction:[f32; 3], rotation:[f32; 3]) {
-    wrapper.inner.set_target(position, direction, rotation);
+fn set_target(wrapper: &mut PySerialRobot, position:[f32; 3], direction:[f32; 3], rotation:[f32; 3]) -> PyResult<bool> {
+    Ok(wrapper.inner.set_target(position, direction, rotation))
 }
 
 /// Returns the actuation values needed to reach the target previously set

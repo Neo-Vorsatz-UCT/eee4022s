@@ -1,6 +1,86 @@
 % Computer Vision ================================
-\section{Computer Vision}
+\chapter{Computer Vision}
 
-The computer vision pipeline of choice was inspired by Drăgoi \textit{et al.} \cite{bib:teleoperation_intuitive_using_MediaPipeHands}. OpenCV was used to extract the live video feed of the laptop's camera, which was then fed into Google's MediaPipe Hand Landmark Detection \cite{bib:MediaPipe_Hand_landmarks_detecion}. MediaPipe Hand Landmark Detection provides monocular hand tracking and pose estimation, and is the successor to MediaPipe Hands, as MediaPipe Hands is now deprecated.
+\section{Tools}
+The computer vision pipeline of choice was inspired by Drăgoi \textit{et al.} \cite{bib:teleoperation_intuitive_using_MediaPipeHands}. OpenCV (5.0.0.93) was used to extract the live video feed of the laptop's camera, which was then fed into Google's MediaPipe (1.0.1) Hand Landmark Detection (later referred to as just "MediaPipe" in this paper). MediaPipe Hand Landmark Detection provides monocular hand tracking and pose estimation, and is the successor to MediaPipe Hands, as MediaPipe Hands is now deprecated.
 
-Other computer vision pipelines that were considered include Ultralytics' YOLO \cite{bib:Ultralytics_YOLO} and MMPose. The \textbf{YOLO models} are extremely customisable and easily trainable, making them excellent for niche computer vision tasks such as forensics \cite{bib:YOLO_in_forensics}, and overall hand detection, given a good data set \cite{bib:YOLO_in_complex_background}. There are no pretrained models for hand pose estimation, and the time constraints of this project did not allow for training a custom model. \textbf{MMPose} has pretrained models for hand pose estimation, but isn't as accurate as MediaPipe for this specific task \cite{bib:MMPose_versus_MediaPipe}.
+Other computer vision pipelines that were considered include Ultralytics' YOLO and MMPose. The \textbf{YOLO models} are extremely customisable and easily trainable, making them excellent for niche computer vision tasks such as forensics \cite{bib:YOLO_in_forensics}, and overall hand detection, given a good data set \cite{bib:YOLO_in_complex_background}. There are no pre-trained models for hand pose estimation, and the time constraints of this project did not allow for training a custom model. \textbf{MMPose} has pre-trained models for hand pose estimation, but isn't as accurate as MediaPipe for this specific task \cite{bib:MMPose_versus_MediaPipe}.
+
+The subsystem was implemented using Python 3.12 on a laptop whose specifications are listed in Table \autoref{tab_comp_vis:laptop_specs}. MediaPipe was configured to only track one hand, while all other settings where default where applicable. NumPy (2.5.3) was used for the more computationally heavy linear algebra.
+
+\begin{table}[h!]
+\centering
+\caption{Laptop Specifications}
+\label{tab_comp_vis:laptop_specs}
+\begin{tabular}{|l|l|}
+    \hline
+    \textbf{Specification} & \textbf{Name/Value} \\
+    \hline \hline
+    CPU & Intel Core i7-8565U, 8 threads @ 1.80GHz \\
+    \hline
+    Memory & 16GiB DDR4 \\
+    \hline
+    Operating System & EndeavourOS Linux (Kernel 7.2.6-arch2-1, 64-bit) \\
+    \hline
+    Camera & 1280x720p @ 30fps, 78.6$\degree$ FOV \\ 
+    \hline
+\end{tabular}
+\end{table}
+
+\newpage
+\section{Calibration}
+Before determining the end-effector target from the pose estimation, there's a calibration phase. The operator places their hand at four coordinates of their workspace, which they would want to roughly map to Braccio's workspace, 300mm along each axis. In order, the calibration coordinates are
+\begin{enumerate}[nosep]
+    \item (0, 0, 0) - directly in front of the operator, corresponding to the base of the Braccio
+    \item (300mm, 0, 0) - to the right of the workspace
+    \item (0, 300mm, 0) - at the far end of the workspace, forward
+    \item (0, 0, 300mm) - at the top of the workspace
+\end{enumerate}
+
+Using MediaPipe's interpretation of these coordinates, an offset and $3\times3$ scaling matrix is determined, which maps the workspace coordinates to MediaPipe's interpretation. The negative of the offset, and the pseudo-inverse of this matrix are then used to map future MediaPipe interpretations into workspace coordinates, for any hand pose inside the camera's view.
+
+An attempt was made to incorporate the hand's apparent size (measured as the distance from the wrist to the base of the index finger) as a proxy for depth. The reciprocal of its size is roughly proportional to the distance away from the camera. This approximate distance, scaled by 1000 to have more weighting, was added to MediaPipe's interpretation of depth, to give a combined X-coordinate. This combined X-coordinate was used as the input for the calibration, as well as the hand pose estimation post-calibration. Even when using size as a proxy, the transformed depth estimation oscillated with 50 to 100mm of error, and was very sensitive to the orientation of the hand, as this would affect the perceived distance from the wrist to the base of the index finger. This was deemed too unreliable, so depth was excluded from the final implementation, forcing the Braccio to only move within the YZ-plane.
+
+\section{Target Generation}\label{sec_comp_vis:target_generation}
+A "target" describes the desired position, direction, rotation and openness of the end effector. This information is extracted from the hand's wrist, thumb and middle-finger. The midpoint between the middle-finger and thumb is used as the target position. The unit vector from the wrist to the midpoint describes the direction. The unit vector from the midpoint to the middle-finger describes the rotation. Lastly, the distance between the thumb and middle-finger describes the openness. This interpretation of the hand pose can be seen in \autoref{fig_comp_vis:target}, and was chosen because it was believed to be the most intuitive.
+
+\begin{figure}[h!]
+    \centering
+    % Hand
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/computer_vision/hand_photo.png}
+        \caption{Photo of human hand}
+        \label{fig_comp_vis:human_hand}
+    \end{subfigure}
+    % \hfill % middle space
+    \hspace{0.1\textwidth}
+    % Claw
+    \begin{subfigure}[b]{0.35\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/computer_vision/claw_photo.jpg}
+        \caption{Photo of Braccio claw}
+        \label{fig_comp_vis:braccio_claw}
+    \end{subfigure}
+    
+    % Main Caption for the entire figure
+    \caption{Illustration of the target mapping from human hand to Braccio claw}
+    \label{fig_comp_vis:target}
+\end{figure}
+
+\newpage
+The target is directly calculated from the workspace coordinates generated by transforming the MediaPipe coordinates. The X component of the position and direction are forcefully set to zero, to limit the target to the YZ-plane (forward and upward). The position is clamped to have Y and Z coordinates $\geq 0$, to ensure that the target is always in front of the Braccio and also not misinterpreted as under the ground. If the position falls within 100mm of the origin, it is then projected outward onto a sphere with a radius of 100mm, ensuring the target isn't inside the Braccio. If the position was at the origin before being projected, it is instead defaulted to (0, 100mm, 0).\\
+Unexpectedly, MediaPipe always interprets an upward facing palm (whenever the thumb is higher than the middle-finger) as having the thumb further from the camera, compared to the middle-finger. This is inaccurate in this context, because an operator showing an upward facing palm usually just intends for a clockwise rotation (facing the direction that the claw faces). To resolve this, the X component of the direction is negated if it's ever negative, forcing only positive X.\\
+The direction and rotation are then normalised, before being handed over to the inverse kinematics solver along with position.
+
+Even with the calibration described above, the range of the operator's openness varied significantly, sometimes ranging from 10mm to 50mm, and other times ranging from 20mm to 300mm, for different sessions. Because of this, the target's openness is calculated using an adaptive range conversion. An initial range of 30 to 40 is set, and whenever the openness exceeds the maximum or falls short of the minimum by 20\%, the range is adjusted to fit the new value. This allows more consistent interpretation of the operator's hand's openness.\\
+The valid actuation values for the Braccio's claw ranges from 10 (completely open) to 73 (completely closed). This is used to calculate the actuation that will best correspond to the operator's openness, using the range conversion in \autoref{eqn_comp_vis:openness}.
+\begin{equation}
+    \text{braccio openness} = 73+\text{hand openness}\times\frac{10-73}{\text{max}-\text{min}}
+    \label{eqn_comp_vis:openness}
+\end{equation}
+
+\section{Testing}
+This subsystem is benchmarked on the time taken to fetch a video frame, landmark the frame, and generate a target using the landmarks. This is done using the \verb|monotonic()| function provided by the \verb|time| module. Since MediaPipe processes frames asynchronously with the main thread, the timestamps provided to MediaPipe thread are used as the initial time.
+
+Data was generated during a teleoperation task, where a foam cube was picked up, rotated and dropped. A video of this task can be found on \href{https://github.com/Neo-Vorsatz-UCT/eee4022s/blob/main/data/EEE4022S_TDR-04_Demo.mp4}{GitHub}.

@@ -1,6 +1,6 @@
-//! # Module to solve inverse kinematics using amodified FABRIK algorithm
+//! # Module to solve inverse kinematics using a modified FABRIK algorithm
 //! Author: Neo Vorsatz
-//! Last updated: 14 October
+//! Last updated: 24 October
 
 // DEPENDENCIES ================================
 
@@ -14,7 +14,7 @@ use vec_math::{sgn, cos, sin, acos}; // trigonometric functions
 /// The different types of joints
 #[derive(Debug, Clone)]
 pub enum JointType {
-    Immovable, // used for the world frame and target
+    Reference, // used for the world frame and target
     Hinge, // rotates about an axis perpendicular to the link
     Pivot, // rotates about the axis of the link
     Prismatic, // translates along the axis of the link
@@ -55,7 +55,7 @@ impl Joint {
     pub fn new() -> Self {
         Self {
             // Kinematics
-            joint_type: JointType::Immovable,
+            joint_type: JointType::Reference,
             link_len: Scalar::from_num(0),
 
             // Position and orientation
@@ -146,34 +146,36 @@ impl SerialRobot {
     }
 
     /// Sets the base's position and orientation,
-    /// which forces the position of the first joint
+    /// which forces the position of the first joint.
+    /// Returns whether or not this was successful
     /// 
     /// # Arguments
     /// 
     /// * `position` - Position of the base
     /// * `direction` - Direction of the base
-    /// * `rotation` - Rotation (auxilliary axis) of the base
-    pub fn set_base(&mut self, position: [f32; 3], direction: [f32; 3], rotation: [f32; 3]) {
+    /// * `rotation` - Rotation (auxiliary axis) of the base
+    pub fn set_base(&mut self, position: [f32; 3], direction: [f32; 3], rotation: [f32; 3]) -> bool {
         // Get mutable reference to the base joint
         let base = &mut self.joints[0]; // first element of joints
 
         // Set position and orientation
-        base.set_pos(position, direction, rotation);
+        base.set_pos(position, direction, rotation)
     }
 
-    /// Sets the desired target
+    /// Sets the desired target.
+    /// Returns whether or not this was successful
     /// 
     /// # Arguments
     /// 
     /// * `position` - Position of the target
     /// * `direction` - Direction of the target
-    /// * `rotation` - Rotation (auxilliary axis) of the target
-    pub fn set_target(&mut self, position: [f32; 3], direction: [f32; 3], rotation: [f32; 3]) {
+    /// * `rotation` - Rotation (auxiliary axis) of the target
+    pub fn set_target(&mut self, position: [f32; 3], direction: [f32; 3], rotation: [f32; 3]) -> bool {
         // Get mutable reference to the target joint
         let target = &mut self.joints[self.joints.len()-1]; // last element of joints
 
         // Set position and orientation
-        target.set_pos(position, direction, rotation);
+        target.set_pos(position, direction, rotation)
     }
 
     /// Returns the squared error of the end effector compared to the target
@@ -218,7 +220,7 @@ impl SerialRobot {
             // Forward reaching
             for j in (1..(n-1)).rev() {
                 match self.joints[j+1].joint_type {
-                    JointType::Immovable => self.forward_immovable(j),
+                    JointType::Reference => self.forward_reference(j),
                     JointType::Hinge => self.forward_hinge(j),
                     JointType::Pivot => self.forward_pivot(j),
                     JointType::Prismatic => self.forward_prismatic(j),
@@ -229,7 +231,7 @@ impl SerialRobot {
             // Backward reaching
             for j in 1..(n-1) {
                 match self.joints[j-1].joint_type {
-                    JointType::Immovable => self.backward_immovable(j),
+                    JointType::Reference => self.backward_reference(j),
                     JointType::Hinge => self.backward_hinge(j),
                     JointType::Pivot => self.backward_pivot(j),
                     JointType::Prismatic => self.backward_prismatic(j),
@@ -263,75 +265,74 @@ impl SerialRobot {
 
 impl Joint {
     /// Sets the position and orientation of a joint,
-    /// assuming untrusted arguments
+    /// assuming untrusted arguments.
+    /// Returns `true` if the position and orientation is valid, otherwise `false`,
+    /// typically due to zero-magnitude or parallel direction and rotation
     /// 
     /// # Arguments
     /// 
     /// * `position` - Position of the joint
     /// * `direction` - Direction of the joint
-    /// * `rotation` - Rotation (auxilliary axis) of the joint
-    pub fn set_pos(&mut self, position: [f32; 3], direction: [f32; 3], rotation: [f32; 3]) {
+    /// * `rotation` - Rotation (auxiliary axis) of the joint
+    pub fn set_pos(&mut self, position: [f32; 3], direction: [f32; 3], rotation: [f32; 3]) -> bool {
         // Set position
         self.position = Vec3::from_coord(position);
 
         // Set direction
-        let mut dir: Vec3 = Vec3::from_coord(direction);
+        let dir: Vec3 = Vec3::from_coord(direction);
         let mag_dir: Scalar = dir.mag();
         if mag_dir == ZERO {
             // panic!("Direction must be non-zero vector");
-            dir = Vec3::from_coord([0, 0, 1]); // choose default direction
-            self.axis_link = dir;
-        } else {
-            dir = dir / mag_dir; // normalize
-            self.axis_link = dir;
+            return false;
         }
+        self.axis_link = dir / mag_dir; // normalize
 
         // Set rotation
         let mut rot: Vec3 = Vec3::from_coord(rotation);
-        let mut mag_rot: Scalar = rot.mag();
+        rot = rot - dir * rot.dot(dir); // project onto plane defined by `dir`
+        let mag_rot: Scalar = rot.mag();
         if mag_rot == ZERO {
-            // panic!("Rotation must be non-zero vector");
-            rot = Vec3::from_coord([1, 0, 0]); // choose default rotation
-        } else {
-            rot  = rot / mag_rot; // normalize, in case rot is nearly zero
+            // panic!("Rotation parallel with direction");
+            return false;
         }
-        let mut y: Vec3 = dir.cross(rot); // calculate y-axis
-        let mag_y: Scalar = y.mag();
-        if mag_y == ZERO { // if y-axis is zero, then rotation is parallel to direction
-            y = if dir.dot(Vec3::from_coord([0, 1,0 ])).abs() < Scalar::from_num(0.9) {
-                // if `dir` isn't parallel to the y-axis, then we can use the y-axis
-                Vec3::from_coord([0, 1, 0])
-            } else {
-                Vec3::from_coord([1, 0, 0]) // use the x-axis
-            }
-        }
-        rot = y.cross(dir); // calculate new rotation vector that's guarenteed to be perpendicular
-        mag_rot = rot.mag();
-        self.axis_aux = rot / mag_rot;
+        self.axis_aux = rot / mag_rot; // normalize, in case rot is nearly zero
+
+        // Indicate success
+        true
     }
 }
 
 impl SerialRobot {
     /// Moves a joint to a position and orientation,
-    /// under the immovable-constraints of another joint,
+    /// under the reference-constraints of another joint,
     /// during the forward-reaching phase of FABRIK
     /// 
     /// # Arguments
     /// 
     /// * `j` - Index of the Joint being moved
-    fn forward_immovable(&mut self, j: usize) {
-        self.forward_prismatic(j);
+    fn forward_reference(&mut self, j: usize) {
+        if let Ok([joint, reference]) = self.joints.get_disjoint_mut([j, j+1]) { // get individual mutable references
+            // Update joint orientation and position
+            joint.axis_link = reference.axis_link;
+            joint.axis_aux = reference.axis_aux;
+            joint.position = reference.position - joint.axis_link * joint.link_len;            
+        }
     }
 
     /// Moves a joint to a position and orientation,
-    /// under the immovable-constraints of another joint,
+    /// under the reference-constraints of another joint,
     /// during the forward-reaching phase of FABRIK
     /// 
     /// # Arguments
     /// 
     /// * `j` - Index of the Joint being moved
-    fn backward_immovable(&mut self, j: usize) {
-        self.backward_prismatic(j);
+    fn backward_reference(&mut self, j: usize) {
+        if let Ok([joint, reference]) = self.joints.get_disjoint_mut([j, j-1]) { // get individual mutable references
+            // Update joint orientation and position
+            joint.axis_link = reference.axis_link;
+            joint.axis_aux = reference.axis_aux;
+            joint.position = reference.position;
+        }
     }
 
     /// Moves a joint to a position and orientation,
@@ -457,7 +458,7 @@ impl SerialRobot {
                 a = a / mag_a;
             }
 
-            // Correct the direction of the auxilliary axis
+            // Correct the direction of the auxiliary axis
             joint.axis_aux = a * sgn( joint.axis_aux.dot(a) );
 
             // Check joint limits
@@ -501,7 +502,7 @@ impl SerialRobot {
             // using the projected aux axis of the target, otherwise assuming the next joint's aux axis is constrained similarly to a hinge
             let mut a: Vec3;
             match next.joint_type {
-                JointType::Immovable => a = next.axis_aux - joint.axis_link * next.axis_aux.dot(joint.axis_link),
+                JointType::Reference => a = next.axis_aux - joint.axis_link * next.axis_aux.dot(joint.axis_link),
                 _ => {
                     let d: Vec3 = next.position - joint.position;
                     a = pivot.axis_link.cross(d); // temporary variable for aux axis
@@ -514,7 +515,7 @@ impl SerialRobot {
                 a = a / mag_a;
             }
 
-            // Correct the direction of the auxilliary axis
+            // Correct the direction of the auxiliary axis
             joint.axis_aux = a * sgn( joint.axis_aux.dot(a) );
 
             // Check joint limits

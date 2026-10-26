@@ -1,56 +1,38 @@
 % Appendix C ================================
 \chapter{Inverse Kinematics Pseudocode}\label{app:C_ik_pseudocode}
 
-\begin{algorithm}
-\caption{Move Joint under Forward Prismatic Constraints}
-\label{alg:move_prismatic}
-\footnotesize{
+\begin{algorithm}[h!]
+\caption{Move Joint under Forward Reference Constraints}
+\label{alg:move_reference}
+\normalsize{
 \begin{algorithmic}[1]
     \Require An array $J$ of joints, and the index $j$ of the joint being moved,
-    \Ensure Joint $J[j]$ is positioned \& oriented under the forward prismatic constraints of $J[j+1]$
+    \Ensure Joint $J[j]$ is positioned \& oriented under the forward reference constraints of $J[j+1]$
 
-    \Function{ForwardPrismatic}{$J,j$}
+    \Function{ForwardReference}{$J,j$}
         \LineComment[0]{Shorthand for "previous joint"}
         \State $P\gets J[j+1]$
         \Statex
 
-        \LineComment[0]{Update joint orientation}
+        \LineComment[0]{Update joint orientation and position}
         \State $J[j].\vec{axis}_{link}\gets P.\vec{axis}_{link}$
         \State $J[j].\vec{axis}_{aux}\gets P.\vec{axis}_{aux}$
+        \State $J[j].\vec{pos}\gets P.\vec{pos}-J[j].\vec{axis}_{link}J[j].len_{link}$
         \Statex
-
-        \LineComment[0]{Calculate joint length}
-        \State $\vec{d}\gets P.\vec{pos}-J[j].\vec{pos}$
-        \State $P.value\gets(\vec{d}\cdot J[j].\vec{axis}_{link})-J[j].len_{link}$
-        \Statex
-
-        \LineComment[0]{Check joint limits}
-        \If {$P$ is limited}
-            \If {$P.value>P.max$}
-                \State $P.value\gets P.max$
-            \ElsIf {$P.value<P.min$}
-                \State $P.value\gets P.min$
-            \EndIf
-        \EndIf
-        \Statex
-        
-        \LineComment[0]{Update joint position}
-        \State $J[j].\vec{pos}\gets P.\vec{pos}-J[j].\vec{axis}_{link}(P.value+J[j].len_{link})$
     \EndFunction
 \end{algorithmic}
 }
 \end{algorithm}
 
-
-\begin{algorithm}
+\begin{algorithm}[h!]
 \caption{Move Joint under Forward Hinge Constraints}
 \label{alg:move_hinge}
-\footnotesize{
+\normalsize{
 \begin{algorithmic}[1]
     \Require An array $J$ of joints, and the index $j$ of the joint being moved
     \Ensure Joint $J[j]$ is positioned \& oriented under the forward hinge constraints of $J[j+1]$
 
-    \Function{ForwardHinge}{$J,j,dir$}
+    \Function{ForwardHinge}{$J,j$}
         \LineComment[0]{Shorthand for "previous joint"}
         \State $P\gets J[j+1]$
         \Statex
@@ -93,10 +75,10 @@
 }
 \end{algorithm}
 
-\begin{algorithm}
+\begin{algorithm}[h!]
 \caption{Move Joint under Forward Pivot Constraints}
 \label{alg:move_pivot}
-\footnotesize{
+\normalsize{
 \begin{algorithmic}[1]
     \Require An array $J$ of joints, and the index $j$ of the joint being moved
     \Ensure Joint $J[j]$ is positioned \& oriented under the forward pivot constraints of $J[j+1]$
@@ -112,7 +94,7 @@
         \Statex
 
         \LineComment[0]{Determine auxiliary axis direction}
-        \State $\vec{d}\gets J[j].\vec{pos}-J[j+dir].\vec{pos}$
+        \State $\vec{d}\gets J[j].\vec{pos}-J[j-1].\vec{pos}$
         \State $\vec{a}\gets J[j].\vec{axis}_{link}\times\vec{d}$
         \State $mag\_a\gets|\vec{a}|$
         \If{$mag\_a=0$}
@@ -145,3 +127,43 @@
 }
 \end{algorithm}
 
+
+\begin{algorithm}[h!]
+\caption{Move Joint under Forward Prismatic Constraints}
+\label{alg:move_prismatic}
+\normalsize{
+\begin{algorithmic}[1]
+    \Require An array $J$ of joints, and the index $j$ of the joint being moved,
+    \Ensure Joint $J[j]$ is positioned \& oriented under the forward prismatic constraints of $J[j+1]$
+
+    \Function{ForwardPrismatic}{$J,j$}
+        \LineComment[0]{Shorthand for "previous joint"}
+        \State $P\gets J[j+1]$
+        \Statex
+
+        \LineComment[0]{Update joint orientation}
+        \State $J[j].\vec{axis}_{link}\gets P.\vec{axis}_{link}$
+        \State $J[j].\vec{axis}_{aux}\gets P.\vec{axis}_{aux}$
+        \Statex
+
+        \LineComment[0]{Calculate joint length}
+        \State $\vec{d}\gets P.\vec{pos}-J[j].\vec{pos}$
+        \State $P.value\gets(\vec{d}\cdot J[j].\vec{axis}_{link})-J[j].len_{link}$
+        \Statex
+
+        \LineComment[0]{Check joint limits}
+        \If {$P$ is limited}
+            \If {$P.value>P.max$}
+                \State $P.value\gets P.max$
+            \ElsIf {$P.value<P.min$}
+                \State $P.value\gets P.min$
+            \EndIf
+        \EndIf
+        \Statex
+        
+        \LineComment[0]{Update joint position}
+        \State $J[j].\vec{pos}\gets P.\vec{pos}-J[j].\vec{axis}_{link}(P.value+J[j].len_{link})$
+    \EndFunction
+\end{algorithmic}
+}
+\end{algorithm}

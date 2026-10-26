@@ -1,0 +1,16 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="JRmgkX9wV8O0It5Q3O6M">
+    <mxGraphModel dx="673" dy="394" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="_GGi-FvD0d0Xpaufs6xP-5" parent="1" style="swimlane;whiteSpace=wrap;html=1;" value="Joint" vertex="1">
+          <mxGeometry height="190" width="160" x="282" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="_GGi-FvD0d0Xpaufs6xP-6" parent="_GGi-FvD0d0Xpaufs6xP-5" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=top;rounded=0;fontStyle=2" value="&lt;div&gt;&lt;div&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;/div&gt;&lt;div&gt;+joint_type: Enum&lt;/div&gt;&lt;div&gt;+link_len: Float&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;+pos: Vector3&lt;/div&gt;&lt;div&gt;+axis_link: Vector3&lt;/div&gt;&lt;div&gt;+axis_aux: Vector3&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;+value: Float&lt;/div&gt;&lt;div&gt;+limited: Boolean&lt;/div&gt;&lt;div&gt;+min: Float&lt;/div&gt;&lt;div&gt;+max: Float&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="170" width="150" x="10" y="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

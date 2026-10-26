@@ -2,7 +2,7 @@
     Module to handle the DTLS server start-up and communication
     Implementation file
     Author: Neo Vorsatz
-    Last updated: 22 October 2026
+    Last updated: 26 October 2026
     Built from the example at: https://github.com/Mbed-TLS/mbedtls/blob/development/programs/ssl/dtls_server.c
 */
 
@@ -83,7 +83,7 @@ void initServer() {
     mbedtls_ssl_cookie_setup(&cookie);
     mbedtls_ssl_conf_dtls_cookies(&conf, mbedtls_ssl_cookie_write, mbedtls_ssl_cookie_check, &cookie);
 
-    // Configure handshake
+    // Configure timeouts
     mbedtls_ssl_conf_handshake_timeout(&conf, 250, 2000);
     mbedtls_ssl_conf_read_timeout(&conf, IDLE_MS);
 
@@ -146,7 +146,7 @@ int getPacket(uint8_t *write, unsigned long len, uint16_t *lastSeq) {
             ESP_LOGI(TAG, "session ended: %d", -ret);
             return ret;
         }
-        if (ret<3) {continue;} // check that payload is at least 3 bytes
+        if (ret!=26) {continue;} // check that the payload is the correct length
 
         // Check sequence number (assumes little endian)
         uint16_t seq = (write[1]<<8) | write[0]; // assemble sequence number

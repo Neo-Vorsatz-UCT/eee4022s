@@ -1,0 +1,114 @@
+% Appendix D ================================
+\chapter{Example IK Acceptance Test Scenarios}\label{app:D_ik_ATPs}
+
+\begin{table}[h!]
+\centering
+\caption{Example Inverse Kinematics Acceptance Test Scenarios for RQ1}
+\label{tab_ik:example_ATPs_RQ1}
+\small{
+\begin{tabular}{|l|c|c|c|}
+    \hline
+    \textbf{Setting} & \textbf{ATP1.1} & \textbf{ATP1.2} & \textbf{ATP1.3} \\
+    \hline \hline
+    Base - \verb|pos| & 1mm, 2mm, 3mm & -2mm, 0, 1mm & -1mm, 2mm, -2mm \\
+    \hline
+    Base - \verb|axis_link| & 0, 0, 1mm & 0, 0, 1mm & 0, 0, 1mm \\
+    \hline
+    Base - \verb|axis_aux| & 1mm, 0, 0 & 1mm, 0, 0 & 1mm, 0, 0 \\
+    \hline
+    Joint - \verb|joint_type| & Hinge & Pivot & Prismatic \\
+    \hline
+    Joint - \verb|len_link| & 5mm & 5mm & 1mm \\
+    \hline
+    Joint - \verb|limited| & false & false & false \\
+    \hline
+    Joint - \verb|min| & N/A & N/A & N/A \\
+    \hline
+    Joint - \verb|max| & N/A & N/A & N/A \\
+    \hline
+    Target - \verb|pos| & 1mm, 7mm, 3mm & -2mm, 0, 6mm & -1mm, 2mm, 5mm \\
+    \hline
+    Target - \verb|axis_link| & 0, 1mm, 0 & 0, 0, 1mm & 0, 0, 1mm \\
+    \hline
+    Target - \verb|axis_aux| & 1mm, 0, 0 & 0, 1mm, 0 & 1mm, 0, 0 \\
+    \hline \hline
+    expected \verb|value| & -90\degree & 90\degree & 6mm \\
+    \hline
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[h!]
+\centering
+\caption{Example Inverse Kinematics Acceptance Test Scenarios for RQ2}
+\label{tab_ik:example_ATPs_RQ2}
+\small{
+\begin{tabular}{|l|c|c|c|}
+    \hline
+    \textbf{Setting} & \textbf{ATP2.1} & \textbf{ATP2.2} & \textbf{ATP2.3} \\
+    \hline \hline
+    Base - \verb|pos| & 1mm, 2mm, 3mm & -2mm, 0, 1mm & -1mm, 2mm, -2mm \\
+    \hline
+    Base - \verb|axis_link| & 0, 0, 1mm & 0, 0, 1mm & 0, 0, 1mm \\
+    \hline
+    Base - \verb|axis_aux| & 1mm, 0, 0 & 1mm, 0, 0 & 1mm, 0, 0 \\
+    \hline
+    Joint - \verb|joint_type| & Hinge & Pivot & Prismatic \\
+    \hline
+    Joint - \verb|len_link| & 4mm & 7mm & 2mm \\
+    \hline
+    Joint - \verb|limited| & false & false & false \\
+    \hline
+    Joint - \verb|min| & N/A & N/A & N/A \\
+    \hline
+    Joint - \verb|max| & N/A & N/A & N/A \\
+    \hline
+    Target - \verb|pos| & 3mm, -0.83mm, 5.83mm & -1mm, 0, 4mm & -3mm, 2mm, 1mm \\
+    \hline
+    Target - \verb|axis_link| & 1mm, 0, 0 & 0, 0, 1mm & -1mm, 0, 0 \\
+    \hline
+    Target - \verb|axis_aux| & 0, -1mm, 0 & 0, -1mm, 0 & 0, 1mm, 0 \\
+    \hline \hline
+    expected \verb|value| & 45\degree & -90\degree & 1mm \\
+    \hline
+\end{tabular}
+}
+\end{table}
+
+\newpage
+\begin{table}[h!]
+\centering
+\caption{Example Inverse Kinematics Acceptance Test Scenarios for RQ3}
+\label{tab_ik:example_ATPs_RQ3}
+\small{
+\begin{tabular}{|l|c|c|c|}
+    \hline
+    \textbf{Setting} & \textbf{ATP3.1} & \textbf{ATP3.2} & \textbf{ATP3.3} \\
+    \hline \hline
+    Base - \verb|pos| & 1mm, 2mm, 3mm & -2mm, 0, 1mm & -1mm, 2mm, -2mm \\
+    \hline
+    Base - \verb|axis_link| & 0, 0, 1mm & 0, 0, 1mm & 0, 0, 1mm \\
+    \hline
+    Base - \verb|axis_aux| & 1mm, 0, 0 & 1mm, 0, 0 & 1mm, 0, 0 \\
+    \hline
+    Joint - \verb|joint_type| & Hinge & Pivot & Prismatic \\
+    \hline
+    Joint - \verb|len_link| & 5mm & 5mm & 1mm \\
+    \hline
+    Joint - \verb|limited| & true & true & true \\
+    \hline
+    Joint - \verb|min| & -30\degree & -45\degree & -1mm \\
+    \hline
+    Joint - \verb|max| & 45\degree & 60\degree & 4.5mm \\
+    \hline
+    Target - \verb|pos| & 1mm, 7mm, 3mm & -2mm, 0, 6mm & -1mm, 2mm, 5mm \\
+    \hline
+    Target - \verb|axis_link| & 0, 1mm, 0 & 0, 0, 1mm & 0, 0, 1mm \\
+    \hline
+    Target - \verb|axis_aux| & 1mm, 0, 0 & 0, 1mm, 0 & 1mm, 0, 0 \\
+    \hline \hline
+    expected \verb|value| & -30\degree & 60\degree & 4.5mm \\
+    \hline
+\end{tabular}
+}
+\end{table}

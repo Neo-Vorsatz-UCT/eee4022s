@@ -1,2 +1,100 @@
 % Network ================================
-\section{Network}
+\chapter{Network}
+
+\section{Internet Protocol}
+
+\subsection{Protocol}
+One of two schemes can be adopted; either the operator-side sends packets only when a new target is determined, or the operator-side sends packets continuously, regardless of if there's a change. The former reduces network traffic, while the latter implicitly gives the slave-side information about the network's reliability. In terms of the former, the reduction in network traffic isn't significant, if we assume the operator is in motion for a significant portion of the total teleoperation session. The latter allows the Braccio to react to network issues, that may have been caused by jamming or DOS attacks, making this scheme preferred.
+
+Instead of building up a protocol that handles authentication and encryption from scratch, DTLS was implemented. The ESP32 was configured as a DTLS server, exposing port 42069 to receive the actuation values.
+
+For authentication, the choice was between X.509 certificates or preshared keys (PSK). X.509 certificates are generally more secure, and allow the permissions/authentication of a participant to be revoked (although managing multiple operators' permissions is outside of the scope for this project). Processing X.509 certificates is resource intensive, which makes the ESP32 more vulnerable to DoS attacks while it's waiting for a valid handshake. PSKs have much less overhead during the initial handshake, making it the implementation of choice.
+
+DTLS was configured to use a 128-bit PSK, and enable Hello Verify cookie exchange to further reduce the risk of DoS attacks.\\
+It was also configured to end the current session if no valid packets are received within 1 second of the previous valid packet. This allows DTLS to be configured to reject any new sessions, while a session is already active, without the risk of the operator-side failing without a sending a notification to close the session.\\
+The chosen symmetric encryption algorithm was AES-128, with GCM to check for tampering, because AES is the encryption algorithm the ESP32 has hardware accelerators for \cite{bib:esp32-d0wdq6}.
+
+\newpage
+DTLS accepts a sliding window of past packets whose sequence numbers were not already received, thereby rejecting packets that were already received or are older than the sliding window \cite{bib:dtls1.2}. The ESP32 shouldn't accept any packets older than the latest, so a manual implementation of unsigned 16-bit sequence numbers was implemented in addition to DTLS's. This manual implementation enforces that only later sequence numbers are accepted by checking that the difference between the received and previous sequence number is positive. This method eventually wraps around, and is vulnerable for some sequence numbers. It uses a 16-bit unsigned integer for the sequence numbers, which means the wraparound happens every $2^{16}=65,536$ packets, and packets as recent as $2^{15}-1=32,767$ instances ago will pass this check. Packets as old as that are rejected by DTLS's sliding window, thereby covering this vulnerable.
+
+\subsection{Payload Format}
+The payload contains the 16-bit unsigned sequence number, as well as six 32-bit floating point numbers that're the setpoints for the Braccio's degrees of freedom. These setpoints consist of the five setpoints from the inverse kinematics subsystem, and the openness of the claw, calculated in the computer vision subsystem. Bytes are ordered in little-endianness, because this is the native format of the laptop and Arduino.
+
+\begin{table}[h!]
+\centering
+\caption{Internet Payload Format}
+\label{tab_net:internet_payload_format}
+\small{
+\begin{tabular}{|c|l|}
+    \hline
+    \textbf{Address} & \textbf{Content} \\
+    \hline \hline
+    0x00 - 0x01 & Unsigned sequence number \\
+    \hline
+    0x02 - 0x05 & Shoulder joint setpoint \\
+    \hline
+    0x06 - 0x09 & Arm 1 joint setpoint \\
+    \hline
+    ... & ... \\
+    \hline
+    0x12 - 0x15 & Wrist joint setpoint \\
+    \hline
+    0x16 - 0x19 & Claw openness setpoint \\
+    \hline
+\end{tabular}
+}
+\end{table}
+
+\subsection{Tools}
+DTLS on the ESP32 was implemented using MbedTLS. This limited the protocol to its 1.2 version, as MbedTLS doesn't currently support TLS/DTLS1.3.
+
+The PSK was generated using OpenSSL's (3.6.4) \verb|rand| command.
+
+The operator-side of the network runs on the same laptop as the computer vision and inverse kinematics subsystems. This was implemented using bindings to C types and functions via the \verb|ctypes| module, and interfacing with OpenSSL.
+
+\newpage
+\section{Communication with Arduino Uno}
+
+\subsection{Protocol}
+The ESP32 and Arduino are serially connected through a TXS0108E logic level shifter, to handle the 5V/3.3V conversion. The communication protocol between the ESP32 and Arduino is UART, because the ATmega328P has hardware for UART that allows it to receive bytes asynchronously \cite{bib:ATmega328P}, unlike with SPI and I2C, which would occupy the Arduino's main thread during reception.
+
+The highest baud rate that successfully transmits data, while also being a divisor of the Arduino's 16MHz clock, was experimentally determined to be 640kHz baud. Since the ESP32, Arduino, and logic level shifter are all rated above this baud rate, a possible cause of this limit is the breadboard's parasitic capacitance. The UART configuration sends 8 data bits per frame, with no parity bit, and 1 stop bit, which are all defaults on the Arduino.
+
+\subsection{Payload Format}
+Since UART is just a byte stream, the starting point of a payload needs to be indicated/marked. This is done with a 2-byte header. The first two bytes of the payload are always 0xC0 and 0xDE, and the Arduino waits for these two bytes before parsing the rest of the payload.\\
+The data of the payload is the 24 bytes of setpoints (little-endian), followed by CRC16 bytes to check the payload integrity. The CRC is generated by the ESP32 using the GENIBUS configuration.
+
+\begin{table}[h!]
+\centering
+\caption{UART Payload Format}
+\label{tab_net:uart_payload_format}
+\small{
+\begin{tabular}{|c|l|}
+    \hline
+    \textbf{Address} & \textbf{Content} \\
+    \hline \hline
+    0x00 - 0x01 & Header: 0xC0, 0xDE \\
+    \hline
+    0x02 - 0x05 & Shoulder joint setpoint \\
+    \hline
+    ... & ... \\
+    \hline
+    0x16 - 0x19 & Claw openness setpoint \\
+    \hline
+    0x1A - 0x1B & CRC16 \\
+    \hline
+\end{tabular}
+}
+\end{table}
+
+\section{Testing}
+This subsystem is benchmarked on the time taken:
+\begin{itemize}[nosep]
+    \item to transmit a packet on the operator-side, measured with \verb|monotonic()|
+    \item for a packet to reach the ESP32, measured by pinging the ESP32 and assuming half of the round trip time
+    \item to receive and validate a packet on the ESP32-side, measured with \verb|esp_timer_get_time()| from the \verb|esp_timer.h| library
+    \item to transmit the UART payload, determined by calculation
+\end{itemize}
+
+Data for the operator-side's transmission latency was generated during the same teleoperation task used to generate data for the inverse kinematics and computer vision subsystems. A video of this task can be found on \href{https://github.com/Neo-Vorsatz-UCT/eee4022s/blob/main/data/EEE4022S_TDR-04_Demo.mp4}{GitHub}.\\
+Data for the ESP32-side's reception and validation latency was generated by sending a constant stream of valid packets to the ESP32, while the ESP32 logged the latency to PlatformIO's serial monitor.

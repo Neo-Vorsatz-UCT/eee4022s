@@ -80,15 +80,19 @@ def get_setpoints(target:_Target) -> list[float] | None:
     print("End-effector:", round(ik_target[0][0]), round(ik_target[0][1]), round(ik_target[0][2])) # FEEDBACK
     print("Direction:", round(ik_target[1][0],2), round(ik_target[1][1],2), round(ik_target[1][2],2)) # FEEDBACK
     print("Rotation:", round(ik_target[2][0],2), round(ik_target[2][1],2), round(ik_target[2][2],2)) # FEEDBACK
-    ik.set_target(_braccio, *ik_target)
-    _valid_setpoints = ik.get_actuations(_braccio, _TARGET_ERR, _MAX_ITER) + [openness]
+    success = ik.set_target(_braccio, *ik_target)
+    if success: # if the target was set successfully
+        _valid_setpoints = ik.get_actuations(_braccio, _TARGET_ERR, _MAX_ITER) + [openness]
     print("Setpoint:", round(_valid_setpoints[4])) # FEEDBACK
 
     # Benchmarking
     if _BENCHMARK:
         bench_delta = (time.perf_counter()-bench_start)*1000
         dc.record(bench_delta, _HD_IK_SOLVER)
-        dc.record(ik.get_num_iterations(_braccio), _HD_ITERATIONS)
+        if success:
+            dc.record(ik.get_num_iterations(_braccio), _HD_ITERATIONS)
+        else:
+            dc.record(0, _HD_ITERATIONS) # no iterations were run
         dc.record(ik.get_error(_braccio), _HD_SQR_ERR)
 
     # Return

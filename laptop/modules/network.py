@@ -1,7 +1,7 @@
 """
     Module to handle the networking - send the setpoints to the ESP32 over the network via DTLS1.2 (PSK)
     Author: Neo Vorsatz
-    Last updated: 22 October 2026
+    Last updated: 25 October 2026
 """
 
 # IMPORTS ================================
@@ -35,7 +35,7 @@ _CIPHER = b"PSK-AES128-GCM-SHA256"
 
 # Target server
 """
-    By default, many Wirewalls block mDNS services (on port 5353).
+    By default, many Firewalls block mDNS services (on port 5353).
     To temporarily bypass this on linux, run the command:
     sudo firewall-cmd --zone=public --add-service=mdns
     When you reboot your system, this change is automatically reverted.
@@ -43,7 +43,7 @@ _CIPHER = b"PSK-AES128-GCM-SHA256"
 _MDNS_HOSTNAME = "eee4022s-braccio"
 _MDNS_SERVICE = "_actuation._udp.local."
 _MDNS_TIMEOUT_MS = 2000 # timeout for ESP32 to respond to lookup
-_ESP32_IPV4_OVERRIDE = "192.168.0.83" # set to `None` to use mDNS, and set to an IPv4 string to override mDNS
+_ESP32_IPV4_OVERRIDE = None # "192.168.0.83" # set to `None` to use mDNS, and set to an IPv4 string to override mDNS
 _PORT = 42069 # used if overriding mDNS
 
 # OpenSSL constants, from ssl.h and bio.h
@@ -380,7 +380,7 @@ def send_setpoints(setpoints:list[float]):
         bench_start = time.perf_counter()
 
     # Send packet
-    FRAME = struct.Struct("<H6f")  # 2 bytes of sequencing + 6 float32 setpoints = 26 bytes
+    FRAME = struct.Struct("<H6f")  # 2 byte of sequencing + 6 float32 setpoints = 26 bytes
     payload = FRAME.pack(_next_seq_num, *setpoints)
     ret = _ssl["SSL_write"](_session, payload, len(payload))
     if ret != len(payload):

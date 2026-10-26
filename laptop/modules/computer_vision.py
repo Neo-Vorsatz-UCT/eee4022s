@@ -120,7 +120,7 @@ def _proxy_depth(result:_HandLandmarkerResult) -> float:
     size = np.linalg.norm(np.subtract(index_base_xy, base_xy))
 
     # Calculate depth
-    return 1/size
+    return 1000/size
 
 def _get_landmark_coord(result:_HandLandmarkerResult, landmark_index:int) -> _Coord | None:
     """
@@ -621,7 +621,6 @@ def get_target() -> tuple[list[list[float]], float] | tuple[None, None]:
     thm_to_mid = np.subtract(middle_finger, thumb)
     if thm_to_mid[_X] < 0:
         thm_to_mid[_X] *= -1 # correct flaw in model training
-    # print("Claw tips | thumb:", thumb[0], " | middle:", middle_finger[0]) # FEEDBACK
 
     # Set rotation
     rotation = _normalize(thm_to_mid.tolist())
