@@ -1,0 +1,23 @@
+% Security Standard ================================
+\chapter{Security Standard}\label{ch:sec_std}
+
+The security of the teleoperation system can be quantified by checking how many of the requirements are met for the OWASP IoT Security Verification Standard (ISVS) 1.0.0-RC2 \cite{bib:OWASP_ISVS}, which is currently under review for publishing. \autoref{tab_sec_std:isvs} shows the level 1 requirements from the standard, whether they're passed for the teleoperation system, and what kind of attacks or vulnerabilities the standard protects against.
+
+\begin{table}[h!]
+\centering
+\caption{Teleoperation Compared to OWASP ISVS 1.0.0-RC2}
+\label{tab_sec_std:isvs}
+\small{
+\begin{tabular}{|c|c|p{0.5\linewidth}|}
+    \hline
+    \textbf{ID} & \textbf{Pass/Fail} & \textbf{Attacks} \\
+    \hline \hline
+    1.1.1 & - & - \\
+    1.1.2 & True & Unmaintained entryways \\
+    1.2.3 & True & Undocumented security protocols \\
+    1.2.4 & False & Privilege escalation on same device \\
+    1.2.5 & False & Compromised server-side components \\
+    
+\end{tabular}
+}
+\end{table}

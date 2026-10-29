@@ -5,20 +5,16 @@
 // DEPENDENCIES ================================
 
 // External
-use fixed; // fixed-point arithmetic
-use fixed::traits::ToFixed; // ToFixed trait
-// use fixed_sqrt::FixedSqrt; // square root trait
 use simple_vectors::Vector; // vector arithmetic
 use std::ops::{Add, Sub, Mul, Div, Neg}; // traits for the + and - operators
-use cordic; // trigonometric functions
 
 // TYPES ================================
 
 /// Chosen fractional data type
-pub type Scalar = fixed::FixedI64<fixed::types::extra::U16>;
+pub type Scalar = f32;
 
 /// Arbitrary 3D vector
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Vec3 {
     inner: Vector<Scalar, 3>,
 }
@@ -26,19 +22,19 @@ pub struct Vec3 {
 // CONSTANTS ================================
 
 // Conversion ratios between radians and degrees
-const DEG_TO_RAD: Scalar = Scalar::lit("0.01745329252"); // pi/180
-const RAD_TO_DEG: Scalar = Scalar::lit("57.29577951"); // 180/pi
-pub const ZERO: Scalar = Scalar::ZERO; // zero
+const DEG_TO_RAD: Scalar = 0.01745329252; // pi/180
+const RAD_TO_DEG: Scalar = 57.29577951; // 180/pi
+pub const ZERO: Scalar = 0.0; // zero
 
 // CONSTRUCTOR IMPLEMENTATION ================================
 
 impl Vec3 {
-    pub fn from_coord(coords: [impl ToFixed+Copy; 3]) -> Self {
+    pub fn from_coord(coords: [f32; 3]) -> Self {
         Self {
             inner: Vector::new([
-                Scalar::from_num(coords[0]),
-                Scalar::from_num(coords[1]),
-                Scalar::from_num(coords[2]),
+                coords[0],
+                coords[1],
+                coords[2],
             ])
         }
     }
@@ -148,7 +144,7 @@ pub fn sgn(value: Scalar) -> Scalar {
 
     // Check for zero
     if sign == ZERO {
-        sign = Scalar::from_num(1); // change to 1
+        sign = 1.0; // change to 1
     }
 
     // Return
@@ -158,20 +154,20 @@ pub fn sgn(value: Scalar) -> Scalar {
 /// Returns the cosine of an angle in degrees
 pub fn cos(angle: Scalar) -> Scalar {
     // Perform cosine
-    cordic::cos(angle*DEG_TO_RAD)
+    (angle*DEG_TO_RAD).cos()
 }
 
 /// Returns the sine of an angle in degrees
 pub fn sin(angle: Scalar) -> Scalar{
     // Perform sine
-    cordic::sin(angle*DEG_TO_RAD)
+    (angle*DEG_TO_RAD).sin()
 }
 
 /// Returns the arccosine (in degrees) of a value
 pub fn acos(value: Scalar) -> Scalar {
     // Set boundaries
-    let max: Scalar = Scalar::from_num(1);
-    let min: Scalar = Scalar::from_num(-1);
+    let max: Scalar = 1.0;
+    let min: Scalar = -1.0;
 
     // Clamp the input
     let clamped_value: Scalar = if value > max {
@@ -183,7 +179,7 @@ pub fn acos(value: Scalar) -> Scalar {
     };
 
     // Perform arccosine
-    cordic::acos(clamped_value)*RAD_TO_DEG
+    clamped_value.acos()*RAD_TO_DEG
 }
 
 // HELPER FUNCTIONS ================================
@@ -200,74 +196,74 @@ mod tests {
 
     #[test]
     fn test_dot() {
-        let a = Vec3::from_coord([-1, 1, 3]);
-        let b = Vec3::from_coord([-3, 2, 0]);
-        assert_eq!(a.dot(b).to_num::<f32>(), 5.0f32);
+        let a = Vec3::from_coord([-1.0, 1.0, 3.0]);
+        let b = Vec3::from_coord([-3.0, 2.0, 0.0]);
+        assert_eq!(a.dot(b), 5.0f32);
     }
 
     #[test]
     fn test_cross() {
-        let a = Vec3::from_coord([-1, 1, 3]);
-        let b = Vec3::from_coord([-3, 2, 0]);
-        let expected: Vec3 = Vec3::from_coord([-6, -9, 1]);
+        let a = Vec3::from_coord([-1.0, 1.0, 3.0]);
+        let b = Vec3::from_coord([-3.0, 2.0, 0.0]);
+        let expected: Vec3 = Vec3::from_coord([-6.0, -9.0, 1.0]);
         assert_eq!(a.cross(b), expected);
     }
 
     #[test]
     fn test_sum_sqr() {
-        let v = Vec3::from_coord([-1, 1, 3]);
-        assert_eq!(v.sum_sqr().to_num::<f32>(), 11.0f32);
+        let v = Vec3::from_coord([-1.0, 1.0, 3.0]);
+        assert_eq!(v.sum_sqr(), 11.0f32);
     }
 
     #[test]
     fn test_mag() {
-        let v = Vec3::from_coord([0, 3, 4]);
-        assert_eq!(v.mag().to_num::<f32>(), 5.0f32);
+        let v = Vec3::from_coord([0.0, 3.0, 4.0]);
+        assert_eq!(v.mag(), 5.0f32);
     }
 
     #[test]
     fn test_sgn() {
         // sgn(2) = 1
-        assert_approx_eq!(sgn(Scalar::from_num(2)).to_num::<f32>(), 1.0f32, TOL_PROP);
+        assert_approx_eq!(sgn(2.0), 1.0f32, TOL_PROP);
         // sgn(-5) = -1
-        assert_approx_eq!(sgn(Scalar::from_num(-5)).to_num::<f32>(), -1.0f32, TOL_PROP);
+        assert_approx_eq!(sgn(-5.0), -1.0f32, TOL_PROP);
         // sgn(0) = 1
-        assert_approx_eq!(sgn(Scalar::from_num(0)).to_num::<f32>(), 1.0f32, TOL_PROP);
+        assert_approx_eq!(sgn(0.0), 1.0f32, TOL_PROP);
     }
 
     #[test]
     fn test_cos() {
         // cos(0) = 1
-        assert_approx_eq!(cos(Scalar::from_num(0)).to_num::<f32>(), 1.0f32, TOL_PROP);
+        assert_approx_eq!(cos(0.0), 1.0f32, TOL_PROP);
         // cos(90) = 0
-        assert_approx_eq!(cos(Scalar::from_num(90)).to_num::<f32>(), 0.0f32, TOL_PROP);
+        assert_approx_eq!(cos(90.0), 0.0f32, TOL_PROP);
         // cos(180) = -1
-        assert_approx_eq!(cos(Scalar::from_num(180)).to_num::<f32>(), -1.0f32, TOL_PROP);
+        assert_approx_eq!(cos(180.0), -1.0f32, TOL_PROP);
         // cos(-60) = 0.5
-        assert_approx_eq!(cos(Scalar::from_num(-60)).to_num::<f32>(), 0.5f32, TOL_PROP);
+        assert_approx_eq!(cos(-60.0), 0.5f32, TOL_PROP);
     }
 
     #[test]
     fn test_sin() {
         // sin(0) = 0
-        assert_approx_eq!(sin(Scalar::from_num(0)).to_num::<f32>(), 0.0f32, TOL_PROP);
+        assert_approx_eq!(sin(0.0), 0.0f32, TOL_PROP);
         // sin(90) = 1
-        assert_approx_eq!(sin(Scalar::from_num(90)).to_num::<f32>(), 1.0f32, TOL_PROP);
+        assert_approx_eq!(sin(90.0), 1.0f32, TOL_PROP);
         // sin(180) = 0
-        assert_approx_eq!(sin(Scalar::from_num(180)).to_num::<f32>(), 0.0f32, TOL_PROP);
+        assert_approx_eq!(sin(180.0), 0.0f32, TOL_PROP);
         // sin(-30) = -0.5
-        assert_approx_eq!(sin(Scalar::from_num(-30)).to_num::<f32>(), -0.5f32, TOL_PROP);
+        assert_approx_eq!(sin(-30.0), -0.5f32, TOL_PROP);
     }
 
     #[test]
     fn test_acos() {
         // acos(1) = 0
-        assert_approx_eq!(acos(Scalar::from_num(1)).to_num::<f32>(), 0.0f32, TOL_DEG);
+        assert_approx_eq!(acos(1.0), 0.0f32, TOL_DEG);
         // acos(0) = 90
-        assert_approx_eq!(acos(Scalar::from_num(0)).to_num::<f32>(), 90.0f32, TOL_DEG);
+        assert_approx_eq!(acos(0.0), 90.0f32, TOL_DEG);
         // acos(-1) = 180
-        assert_approx_eq!(acos(Scalar::from_num(-1)).to_num::<f32>(), 180.0f32, TOL_DEG);
+        assert_approx_eq!(acos(-1.0), 180.0f32, TOL_DEG);
         // acos(0.5) = 60
-        assert_approx_eq!(acos(Scalar::from_num(0.5)).to_num::<f32>(), 60.0f32, TOL_DEG);
+        assert_approx_eq!(acos(0.5), 60.0f32, TOL_DEG);
     }
 }

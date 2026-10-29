@@ -1,22 +1,46 @@
 \chapter{Introduction}
 
-\section{Background to the study}
-A very brief background to your area of research. Start off with a general introduction to the area and
-then narrow it down to your focus area. Used to set the scene \cite{smt2011}.
-\section{Objectives of this study}
-\subsection{Problems to be investigated}
-Description of the main questions to be investigated in this study.
-\subsection{Purpose of the study}
-Give the significance of investigating these problems. It must be obvious why you are doing this study
-and why it is relevant.
+\section{Background to the project}
+% A very brief background to your area of research. Start off with a general introduction to the area and
+% then narrow it down to your focus area. Used to set the scene \cite{smt2011}.
+Teleoperation is the control of systems (often robotic) over large distance. This is done because it's often useful to have a human in the loop as opposed to fully automated systems. Teleoperation poses many modern challenges, such as keeping the network secure and responsive on resource constrained hardware. Non intrusive and intuitive methods of reading user input, such as computer vision, are also preferred because they introduce less fatigue and strain on the operator.
+
+\section{Objectives of this project}
+% \subsection{Problems to be investigated}
+% Description of the main questions to be investigated in this study.
+This project aims to develop a teleoperation system using the Tinkerkit Braccio for Arduino and an ESP32, by implementing non-intrusive computer vision to read user input, and keeping the network security in mind.
+
+% \subsection{Purpose of the project}
+% Give the significance of investigating these problems. It must be obvious why you are doing this study
+% and why it is relevant.
+This is done to demonstrate and investigate the use of computer vision and intuitive control schemes in teleoperation systems. This project also discusses the overall cybersecurity of this system, and investigates the effects of implementing cybersecurity principles on the network's performance, given resource constrained hardware.
 
 \section{Scope and Limitations}
-Scope indicates to the reader what has and has not been included in the study. Limitations tell the
-reader what factors influenced the study such as sample size, time etc. It is not a section for excuses as
-to why your project may or may not have worked.
+% Scope indicates to the reader what has and has not been included in the study. Limitations tell the
+% reader what factors influenced the study such as sample size, time etc. It is not a section for excuses as
+% to why your project may or may not have worked.
+This project assumes an ideal operator environment, where the robustness of the computer vision is not a concern.\\
+This project does not implement a feedback system for the operator, and hence assumes the operator already has some way to see the slave's and its environment.\\
+This project also focuses on the implementation of cybersecurity for the internet traffic, as other security such as for the hardware or encryption keys would not significantly affect the performance of the teleoperation.\\
+This project does not investigate the overall accuracy of the teleoperation.
 
+\newpage
 \section{Plan of development}
-Here you tell the reader how your report has been organised and what is included in each
-chapter.
+% Here you tell the reader how your report has been organised and what is included in each
+% chapter.
 
-{\bf I recommend that you write this section last. You can then tailor it to your report.}
+% {\bf I recommend that you write this section last. You can then tailor it to your report.}
+In \autoref{ch:lit}, is a review of similar projects and studies, and the technologies surrounding the subsystems for this project.
+
+From \autoref{ch:comp_vis} to \autoref{ch:act} are the explanations of the design and implementation of each of this project's subsystems:
+\begin{itemize}[nosep]
+    \item \autoref{ch:comp_vis} is dedicated to the computer vision subsystem, explaining how user input is taken and interpreted.
+    \item \autoref{ch:ik} goes through the implementation of the inverse kinematics subsystems, which maps the desired end-effector target to a set of actuation/control values for the Braccio.
+    \item \autoref{ch:net} discusses some risks the network faces, and how those risks were mitigated in the networking system.
+    \item \autoref{ch:act} explains how the Braccio was actuated to achieve the desired end-effector target.
+\end{itemize}
+
+The results are shown and discussed in \autoref{ch:re} and \autoref{ch:dis}. The outputs of this project are summarised in \autoref{ch:conc}, and recommendations for future work are made in \autoref{ch:rec}.
+
+\vspace{2em}
+\hrule

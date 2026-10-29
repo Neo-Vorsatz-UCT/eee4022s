@@ -1,32 +1,33 @@
 % Appendix A ================================
-\chapter{Additional Files and Schematics}
+\chapter{GA Appendix}
 
-Add any information here that you would like to have in your project but is not necessary in the main
-text. Remember to refer to it in the main text. Separate your appendices based on what they are for
-example. Equation derivations in Appendix A and code in Appendix B etc.
+% Add any information here that you would like to have in your project but is not necessary in the main
+% text. Remember to refer to it in the main text. Separate your appendices based on what they are for
+% example. Equation derivations in Appendix A and code in Appendix B etc.
 
-\textbf{IMPORTANT:} Appendix A (see the table below) should provide a summary of how you have met the GAs associated with the course, and where in the report the evidence can be found.
+% \textbf{IMPORTANT:} Appendix A (see the table below) should provide a summary of how you have met the GAs associated with the course, and where in the report the evidence can be found.
 
-If you have used AI in writing your report, you need to provide details in one of the appendices of how you used it.
+% If you have used AI in writing your report, you need to provide details in one of the appendices of how you used it.
 
-If appropriate, in a subsequent appendix, provide a link to any GitHub repository where the code and additional materials for your project can be found.
+% If appropriate, in a subsequent appendix, provide a link to any GitHub repository where the code and additional materials for your project can be found.
 
-\begin{center}
-\begin{tabular}{||p{2em} |p{15em} |p{20em}||}
- \hline
- \textbf{GA} & \textbf{Requirement} & \textbf{Justification and section in the report}  \\ [0.5ex] 
- \hline\hline
- 1 & Problem-solving & Description here  \\ 
- \hline
- 4 & Investigations, experiments and data analysis & Description here  \\
- \hline
- 5 & Use of engineering tools & Description here \\
- \hline
- 6 & Professional and technical communication (Long report) & Description here \\
- \hline
- 8 & Individual work & Description here \\
- \hline
- 9 & Independent learning ability & Description here \\ [1ex] 
- \hline
+\begin{table}[h!]
+\centering
+\begin{tabular}{||p{2em} |p{12em} |p{23em}||}
+    \hline
+    \textbf{GA} & \textbf{Requirement} & \textbf{Justification and section in the report}  \\ [0.5ex] 
+    \hline\hline
+    1 & Problem-solving & In this project I needed to implement intuitive spatial mapping to enable teleoperation. The relevant literature was reviewed in \autoref{sec_lit:kinematic_mapping} to determine the best approach. I then designed a software implementation around a particular methodology in \autoref{ch:ik}, extending it to fully solve the problem. \\ 
+    \hline
+    4 & Investigations, experiments and data analysis & I designed experiments to benchmark the various subsystems, such as in \autoref{sec_net:testing}. The raw data was organised and process, giving the results shown in \autoref{ch:re}. I then discussed these results in the context of the literature and used it to inform conclusions, seen in \autoref{ch:dis}. \\
+    \hline
+    5 & Use of engineering tools & To implement the final solution, I used various programming languages and their libraries (see any subsystem), as well the PlatformIO IDE to flash and debug the firmware (see \autoref{sec_net:testing}). A voltmeter and oscilloscope were used to debug the serial communication. Wireshark was used to confirm that packets were encrypted. \\
+    \hline
+    6 & Professional and technical communication (Long report) & This report is written in an academic format, and uses engineering documentation such as pseudocode (see \autoref{alg:fabrik}) to communicate complex ideas. \\
+    \hline
+    8 & Individual work & This project is my own work, except where I have stated otherwise. The project incorporates aspects from different disciplines; computer vision (\autoref{ch:comp_vis}), embedded systems, and cybersecurity (\autoref{ch:net}). \\
+    \hline
+    9 & Independent learning ability & This project has required knowledge about technologies that were not directly (through lectures) taught in the curriculum, such as inverse kinematics (see \autoref{ch:ik}). \\ [1ex]
+    \hline
 \end{tabular}
-\end{center}
+\end{table}

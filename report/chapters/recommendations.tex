@@ -1,7 +1,9 @@
-\chapter{Recommendations}
+\chapter{Recommendations}\label{ch:rec}
 
 % Make sensible recommendations for further work.
 
 Adding depth to the teleoperation is a natural next step, as only the computer vision subsystem would require significant modification. This can be done by using a depth camera, as opposed to the native laptop camera, or introducing a second camera at an orthogonal perspective. In the case of a depth camera, MediaPipe doesn't natively support depth data, so a separate algorithm/model would be required to create a depth map.
 
-This paper only evaluates the kinematic mapping software with functional metrics, but does not provide direct insight into its intuitiveness. I would like to see the kinematic mapping software evaluated on intuitiveness, likely using the \textit{completion rate} and \textit{completion time} of teleoperation tasks, performed by novice operators. These metrics are used to evaluate intuitiveness in other teleoperation systems \cite{bib:teleoperation_intuitive_using_MediaPipeHands}\cite{bib:teleoperation_continuous_space}\cite{bib:teleoperation_continuous_space_2}.
+The current teleoperation system is still vulnerable to many types of cyber attacks. Implementing more cybersecurity measures would greatly improve the safety of the system. A way to improve the security would be to use the ESP32's flash encryption. The ESP32 and Arduino are also able to be bricked, such that their firmware can't be overwritten; a feature more for commercial release as opposed to research. Performing more thorough and comprehensive tests on the existing implementation, as well as any new features, would help improve confidence in how the attack surface is reduced.
+
+This project only evaluates the kinematic mapping software with functional metrics, but does not provide direct insight into its intuitiveness. I would like to see the kinematic mapping software evaluated on intuitiveness, likely using the \textit{completion rate} and \textit{completion time} of teleoperation tasks, performed by novice operators. These metrics are used to evaluate intuitiveness in other teleoperation systems \cite{bib:teleoperation_intuitive_using_MediaPipeHands}\cite{bib:teleoperation_continuous_space}\cite{bib:teleoperation_continuous_space_2}.

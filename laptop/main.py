@@ -1,7 +1,7 @@
 """
     Program to handle the operator-side of the Braccio teleoperation
     Author: Neo Vorsatz
-    Last updated: 19 October 2026
+    Last updated: 27 October 2026
 """
 
 # IMPORTS ================================
@@ -78,7 +78,7 @@ def _main_loop() -> OSError:
                 dc.flush() # write all of the data that has been pending
 
             # Add delay for network traffic to keep up
-            time.sleep(0.01)
+            # time.sleep(0.01)
 
         # Failed to send packet
         except OSError as e:

@@ -1,5 +1,13 @@
-\chapter{Conclusions}
+\chapter{Conclusions}\label{ch:conc}
 
-These are the conclusions from the investivation and how the investigation changes things in this field or contributes to current knowledge...
+% These are the conclusions from the investivation and how the investigation changes things in this field or contributes to current knowledge...
 
-Draw suitable and intelligent conclusions from your results and subsequent discussion.
+% Draw suitable and intelligent conclusions from your results and subsequent discussion.
+
+A full teleoperation pipeline with non-intrusive user readings and  security conscious networking was successfully implemented, although with many limitations.
+
+The final implementation failed to make use of the third dimension of space, thereby limiting the range of tasks the teleoperated slave can accomplish.
+
+The total latency of the slave's response was slower than implementations in existing literature, primarily due to the low-pass filtering done to the Braccio's movements. The inverse kinematics solver has the potential to match the speed of other implementations, but suffers from impossible targets.
+
+The cybersecurity conscious networking subsystem did not significantly impede on the overall system's performance, demonstrating a way to partially secure network traffic in resource constrained systems, such as an ESP32. Many other vulnerabilities still exist.

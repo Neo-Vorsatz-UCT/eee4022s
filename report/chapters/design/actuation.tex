@@ -1,5 +1,5 @@
 % Actuation ================================
-\chapter{Actuation}
+\chapter{Actuation}\label{ch:act}
 
 \section{Braccio Control Library}
 
@@ -37,9 +37,9 @@ To command the servo motors into a particular angle, the \verb|writeMicroseconds
 The new library also implements soft-start; a feature of the old library that gradually increases power to the servo motors when the Arduino is turned on, as opposed to letting the servo motors jolt into an initial position.
 
 \section{Main Loop}
-The Arduino's main loop continuously gathers bytes from the UART buffer, and searches for a complete payload. If a complete payload is found and verified with CRC16, then the setpoints for the motors are updated. If only a partial payload if found, that partial portion is kept for the next iteration of the main loop.\\
+The Arduino's main loop continuously gathers bytes from the UART buffer, and searches for a complete payload. If a complete payload is found and verified with CRC16, then the setpoints for the motors are updated. If only a partial payload is found, that partial portion is kept for the next iteration of the main loop.\\
 The Arduino also keeps track of when the latest setpoint update was. If the setpoints have not been updated for over 1 second, then whatever teleoperation task was in progress is likely compromised and so the Arduino resumes a "safe" protocol; it reduces the speed of the Braccio by setting $\tau=300$ms, and sets the setpoint to a retracted position with the claw open. Once a new setpoint is received, the time constant is set back to $\tau=100$ms and operation resumes as normal.\\
 At the end of every iteration of the main loop, the motors are stepped, thereby approaching the setpoint.
 
 \section{Testing}
-This subsystem is benchmarked on the time taken to settle at the setpoint. This is measured by video capturing the Braccio during a step response, using a 30fps camera. This video can be found on \href{https://github.com/Neo-Vorsatz-UCT/eee4022s/blob/main/data/actuation_data.mp4}{GitHub}.
+This subsystem is benchmarked on the time taken to settle at the setpoint. This is measured by video capturing the Braccio during a 90\degree step response, using a 30fps camera. This video can be found on \href{https://github.com/Neo-Vorsatz-UCT/eee4022s/blob/main/data/actuation_data.mp4}{GitHub}.

@@ -56,18 +56,18 @@ impl Joint {
         Self {
             // Kinematics
             joint_type: JointType::Reference,
-            link_len: Scalar::from_num(0),
+            link_len: 0.0,
 
             // Position and orientation
-            position: Vec3::from_coord([0, 0, 0]),
-            axis_link: Vec3::from_coord([0, 0, 1]),
-            axis_aux: Vec3::from_coord([1, 0, 0]),
+            position: Vec3::from_coord([0.0, 0.0, 0.0]),
+            axis_link: Vec3::from_coord([0.0, 0.0, 1.0]),
+            axis_aux: Vec3::from_coord([1.0, 0.0, 0.0]),
 
             // Movement
-            value: Scalar::from_num(0),
+            value: 0.0,
             limited: true,
-            min: Scalar::from_num(0),
-            max: Scalar::from_num(0),
+            min: 0.0,
+            max: 0.0,
         }
     }
 }
@@ -139,10 +139,10 @@ impl SerialRobot {
 
         // Configure the joint
         joint.joint_type = joint_type;
-        joint.link_len = Scalar::from_num(link_len);
+        joint.link_len = link_len;
         joint.limited = limited;
-        joint.min = Scalar::from_num(min);
-        joint.max = Scalar::from_num(max);
+        joint.min = min;
+        joint.max = max;
     }
 
     /// Sets the base's position and orientation,
@@ -250,7 +250,7 @@ impl SerialRobot {
         // Return actuation values
         let mut actuations: Box<[f32]> = vec![0.0; n-3].into_boxed_slice();
         for j in 1..(n-2) {
-            actuations[j-1] = self.joints[j].value.to_num();
+            actuations[j-1] = self.joints[j].value;
         }
         actuations // return
     }
@@ -400,7 +400,7 @@ impl SerialRobot {
 
             // Update joint orientation
             let mag_l: Scalar = l.mag();
-            if mag_l == 0 {
+            if mag_l == 0.0 {
                 hinge.axis_link = prior.axis_link;
             } else {
                 hinge.axis_link = l / mag_l;

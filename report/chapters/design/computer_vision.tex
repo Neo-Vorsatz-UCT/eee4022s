@@ -1,12 +1,12 @@
 % Computer Vision ================================
-\chapter{Computer Vision}
+\chapter{Computer Vision}\label{ch:comp_vis}
 
 \section{Tools}
 The computer vision pipeline of choice was inspired by Drăgoi \textit{et al.} \cite{bib:teleoperation_intuitive_using_MediaPipeHands}. OpenCV (5.0.0.93) was used to extract the live video feed of the laptop's camera, which was then fed into Google's MediaPipe (1.0.1) Hand Landmark Detection (later referred to as just "MediaPipe" in this paper). MediaPipe Hand Landmark Detection provides monocular hand tracking and pose estimation, and is the successor to MediaPipe Hands, as MediaPipe Hands is now deprecated.
 
 Other computer vision pipelines that were considered include Ultralytics' YOLO and MMPose. The \textbf{YOLO models} are extremely customisable and easily trainable, making them excellent for niche computer vision tasks such as forensics \cite{bib:YOLO_in_forensics}, and overall hand detection, given a good data set \cite{bib:YOLO_in_complex_background}. There are no pre-trained models for hand pose estimation, and the time constraints of this project did not allow for training a custom model. \textbf{MMPose} has pre-trained models for hand pose estimation, but isn't as accurate as MediaPipe for this specific task \cite{bib:MMPose_versus_MediaPipe}.
 
-The subsystem was implemented using Python 3.12 on a laptop whose specifications are listed in Table \autoref{tab_comp_vis:laptop_specs}. MediaPipe was configured to only track one hand, while all other settings where default where applicable. NumPy (2.5.3) was used for the more computationally heavy linear algebra.
+The subsystem was implemented using Python 3.12 on a laptop whose specifications are listed in \autoref{tab_comp_vis:laptop_specs}. MediaPipe was configured to only track one hand, while all other settings were default where applicable. NumPy (2.5.3) was used for the more computationally heavy linear algebra.
 
 \begin{table}[h!]
 \centering

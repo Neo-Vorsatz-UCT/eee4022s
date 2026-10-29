@@ -1,5 +1,5 @@
 % Inverse Kinematics ================================
-\chapter{Inverse Kinematics}
+\chapter{Inverse Kinematics}\label{ch:ik}
 
 \section{Requirements}
 The inverse kinematics solver must be able to find a solution where one exists, or find a reasonable solution where no true solution exists. No true solution exists when the target is unreachable due to the kinematics of the serial manipulator or due to limited range of motion. The acceptance test procedures that test for these requirements are described in \autoref{ssec_ik:ATPs}.
@@ -171,12 +171,12 @@ Considering the computationally heavy nature of a numerical process, the algorit
 \end{table}
 
 \newpage
-\section{Testing}
+\section{Testing}\label{sec_ik:testing}
 
 \subsection{Acceptance Test Procedures}\label{ssec_ik:ATPs}
 The inverse kinematics solver is acceptance-tested in isolation from the Braccio-specific implementation of the subsystem. Each of the main three joint types undergo three scenarios in which they are the only joint of a serial manipulator (1 degree of freedom):
 \begin{enumerate}[nosep]
-    \item The joint's ranged of motion is not constrained, and the target is perfectly reachable.
+    \item The joint's range of motion is not constrained, and the target is perfectly reachable.
     \item The joint's range of motion is not constrained, but the target is unreachable regardless, due to the kinematics of the joint.
     \item The joint's range of motion is constrained, and the target would be reachable if not for the constrain.
 \end{enumerate}

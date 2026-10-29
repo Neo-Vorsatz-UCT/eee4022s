@@ -1,5 +1,5 @@
 % Network ================================
-\chapter{Network}
+\chapter{Network}\label{ch:net}
 
 \section{Internet Protocol}
 
@@ -15,7 +15,7 @@ It was also configured to end the current session if no valid packets are receiv
 The chosen symmetric encryption algorithm was AES-128, with GCM to check for tampering, because AES is the encryption algorithm the ESP32 has hardware accelerators for \cite{bib:esp32-d0wdq6}.
 
 \newpage
-DTLS accepts a sliding window of past packets whose sequence numbers were not already received, thereby rejecting packets that were already received or are older than the sliding window \cite{bib:dtls1.2}. The ESP32 shouldn't accept any packets older than the latest, so a manual implementation of unsigned 16-bit sequence numbers was implemented in addition to DTLS's. This manual implementation enforces that only later sequence numbers are accepted by checking that the difference between the received and previous sequence number is positive. This method eventually wraps around, and is vulnerable for some sequence numbers. It uses a 16-bit unsigned integer for the sequence numbers, which means the wraparound happens every $2^{16}=65,536$ packets, and packets as recent as $2^{15}-1=32,767$ instances ago will pass this check. Packets as old as that are rejected by DTLS's sliding window, thereby covering this vulnerable.
+DTLS accepts a sliding window of past packets whose sequence numbers were not already received, thereby rejecting packets that were already received or are older than the sliding window \cite{bib:dtls1.2}. The ESP32 shouldn't accept any packets older than the latest, so a manual implementation of unsigned 16-bit sequence numbers was implemented in addition to DTLS's. This manual implementation enforces that only later sequence numbers are accepted by checking that the difference between the received and previous sequence number is positive. This method eventually wraps around, and is vulnerable for some sequence numbers. It uses a 16-bit unsigned integer for the sequence numbers, which means the wraparound happens every $2^{16}=65,536$ packets, and packets as recent as $2^{15}-1=32,767$ instances ago will pass this check. Packets as old as that are rejected by DTLS's sliding window, thereby covering this vulnerability.
 
 \subsection{Payload Format}
 The payload contains the 16-bit unsigned sequence number, as well as six 32-bit floating point numbers that're the setpoints for the Braccio's degrees of freedom. These setpoints consist of the five setpoints from the inverse kinematics subsystem, and the openness of the claw, calculated in the computer vision subsystem. Bytes are ordered in little-endianness, because this is the native format of the laptop and Arduino.
@@ -58,7 +58,7 @@ The operator-side of the network runs on the same laptop as the computer vision 
 \subsection{Protocol}
 The ESP32 and Arduino are serially connected through a TXS0108E logic level shifter, to handle the 5V/3.3V conversion. The communication protocol between the ESP32 and Arduino is UART, because the ATmega328P has hardware for UART that allows it to receive bytes asynchronously \cite{bib:ATmega328P}, unlike with SPI and I2C, which would occupy the Arduino's main thread during reception.
 
-The highest baud rate that successfully transmits data, while also being a divisor of the Arduino's 16MHz clock, was experimentally determined to be 640kHz baud. Since the ESP32, Arduino, and logic level shifter are all rated above this baud rate, a possible cause of this limit is the breadboard's parasitic capacitance. The UART configuration sends 8 data bits per frame, with no parity bit, and 1 stop bit, which are all defaults on the Arduino.
+The highest baud rate that successfully transmits data, while also being a divisor of the Arduino's 16MHz clock, was experimentally determined to be 640kBd. Since the ESP32, Arduino, and logic level shifter are all rated above this baud rate, a possible cause of this limit is the breadboard's parasitic capacitance. The UART configuration sends 8 data bits per frame, with no parity bit, and 1 stop bit, which are all defaults on the Arduino.
 
 \subsection{Payload Format}
 Since UART is just a byte stream, the starting point of a payload needs to be indicated/marked. This is done with a 2-byte header. The first two bytes of the payload are always 0xC0 and 0xDE, and the Arduino waits for these two bytes before parsing the rest of the payload.\\
@@ -87,7 +87,18 @@ The data of the payload is the 24 bytes of setpoints (little-endian), followed b
 }
 \end{table}
 
-\section{Testing}
+\newpage
+\section{Testing}\label{sec_net:testing}
+\subsection{Penetration Testing}
+The following tests were performed to verify the implemented security:
+\begin{itemize}[nosep]
+    \item Sending an HTTP request, to check that the Braccio doesn't respond to random protocols
+    \item Sending a valid DTLS payload, but with the incorrect key
+    \item Disconnecting for over 1 second, and trying to send packets again
+    \item Confirming that packets were encrypted, using Wireshark
+\end{itemize}
+
+\subsection{Benchmarking}
 This subsystem is benchmarked on the time taken:
 \begin{itemize}[nosep]
     \item to transmit a packet on the operator-side, measured with \verb|monotonic()|

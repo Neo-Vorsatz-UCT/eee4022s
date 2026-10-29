@@ -28,6 +28,7 @@ dependencies = [
  "cordic",
  "fixed",
  "fixed-sqrt",
+ "num-traits",
  "pyo3",
  "simple-vectors",
 ]

@@ -1,7 +1,7 @@
 """
     Module to handle the computer vision - convert hand positions into end-effector targets
     Author: Neo Vorsatz
-    Last updated: 26 October 2026
+    Last updated: 27 October 2026
 """
 
 # IMPORTS ================================
@@ -11,12 +11,13 @@ from math import log
 import time
 import cv2
 import mediapipe as mp
+import queue
 import numpy as np
 mptv = mp.tasks.vision
 from math import sqrt
 
 # Internal
-import modules.data_collection as dc
+# import modules.data_collection as dc
 
 # TYPES ================================
 
@@ -27,7 +28,7 @@ _NDArray = np.typing.NDArray
 # CONSTANTS ================================
 
 # Benchmarking
-_BENCHMARK = True # make this `False` to omit code that is for benchmarking
+_BENCHMARK = False # make this `False` to omit code that is for benchmarking
 _HD_FETCH_FRAME = "fetch frame (ms)"
 _HD_LANDMARK = "landmark (ms)"
 _HD_CALC_TARGET = "calc target (ms)"
@@ -77,6 +78,7 @@ _start_time:float = None
 
 # Latest data
 _latest_result = None
+_queued_result = queue.Queue(maxsize=2)
 _key_press:int = 255 # no key pressed
 
 # Callibration
@@ -96,8 +98,9 @@ def _handle_result(result:_HandLandmarkerResult, output_image:mp.Image, timestam
     """
     Called asynchronously when MediaPipe finishes analysing a frame
     """
-    global _latest_result, _start_time
-    _latest_result = result
+    global _queued_result, _start_time
+    if not _queued_result.full():
+        _queued_result.put(result)
 
     # Benchmarking
     if _BENCHMARK:
@@ -534,7 +537,7 @@ def update_cv() -> bool:
         Whether or not the computer vision is active
     """
     # Global variables
-    global _active, _video_stream, _latest_result, _hand_landmarker, _start_time, _key_press
+    global _active, _video_stream, _latest_result, _queued_result, _hand_landmarker, _start_time, _key_press
 
     # Benchmarking
     if _BENCHMARK:
@@ -558,6 +561,13 @@ def update_cv() -> bool:
 
     # Give image to Hand Landmarker
     _hand_landmarker.detect_async(mp_image, frame_timestamp_ms)
+
+    # Update latest result
+    try:
+        temp = _queued_result.get_nowait()
+        _latest_result = temp
+    except queue.Empty:
+        pass
 
     # Display the frame
     _draw_landmarks(frame, _latest_result)

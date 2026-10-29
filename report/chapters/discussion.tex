@@ -1,6 +1,47 @@
-\chapter{Discussion}
+\chapter{Discussion}\label{ch:dis}
 
-Here is what the results mean and how they tie to existing literature...
+% Here is what the results mean and how they tie to existing literature...
 
-Discuss the relevance of your results and how they fit into the theoretical work you described in your
-literature review.
+% Discuss the relevance of your results and how they fit into the theoretical work you described in your
+% literature review.
+
+\section{Latency}
+As seen in \autoref{fig_re:latency_boxplot} and \autoref{tab_re:latency_table}, the primary contributor of latency in the overall system is the exponential smoothing, contributing 88.3\% of the total latency. This brings the total latency to $1.17\pm 0.0425$ seconds.
+
+This is significantly slower than other teleoperation systems. Mongardi \textit{et al.} \cite{bib:braccio_armband_demo} achieve a total latency of 300ms, while Chen \textit{et al.} \cite{bib:teleoperation_TeleopLab} make their robotic manipulator have a motion-latency of only 10ms. However, being faster has a risk of more aggressive movements, which can be hazardous when dealing with industrial robotic manipulators, like in the case of TeleopLab \cite{bib:teleoperation_TeleopLab}. The trade-off between speed and safety remains to be investigated.
+
+The latency due to the networking subsystem (DTLS and UART communication) is $45.677$ms, which is comparable to MediaPipe's landmarking latency of $61$ms. Excluding the exponential smoothing, the networking subsystem contributes $33.51\%$ to the remaining latency. This would be a significant portion.\\
+The Braccio was controlled over a relatively fast home network, making the packet travel-time smaller than what it would be in a practical application. The latency due to packets having to travel through the internet will vary significantly, depending on the distance between the operator and slave, reaching latencies upward of $150$ms \cite{bib:world_wide_ping}. This is a factor that could not be expressed in the experiments of the project, and may dwarf the latency of the encryption and decryption (encompassed by the transmission and reception).
+
+The step response of the Braccio has an overshoot of about 10\degree. Exponential smoothing can't inherently introduce overshoot, so this behaviour likely comes from the inertia of the Braccio's arm.\\
+The settling point is also below the setpoint. Each linkage in the Braccio isn't held tightly in position and has a bit of wiggle room. This means the arm is able to "sag" due to the effects of gravity, which appears to happen in the video footage.
+
+
+\newpage
+\section{Inverse Kinematics Solver}
+The IK solver did not return a variety of iterations. Instead, the algorithm either:
+\begin{itemize}[nosep]
+    \item Used no iterations (occurred 180 times)
+    \item Used 1 iteration (occurred 278 times)
+    \item Used 4 iterations (an outlier, occurring once)
+    \item Used the maximum 10,000 iterations (occurred 167 times)
+\end{itemize}
+From the performance of the overall system and the fact that the IK solver passes all ATPs, it's clear that the algorithm \textbf{does} return reasonable solutions. This implies that the algorithm rarely needs more than one iteration to find a solution, otherwise struggles to converge (either due to FABRIK's difficulty with precision or impossible target).
+
+This is supported by the behaviour of the total error throughout the teleoperation task, seen in \autoref{fig_re:sqr_err}. There is no clear convergence behaviour (such as a decaying exponential) that would suggest that the algorithm needs more than 10,000 iterations to converge. Instead, the error fluctuates, possibly due to the nature of the target being fed into the algorithm.\\
+Because the target encompasses both position and direction, impossible targets are easy to find, hence yielding errors that can't be reduced. This can be seen when the operator places their hand near the edge of the Braccio's range of motion, and faces it downwards. For the Braccio to meet the positional requirement, it must extend its arm to the maximum length, but this causes the directional requirement to be failed.
+
+For shorter amounts of iterations, the IK solver creates significantly less latency; around $0.2$ms, which can be seen in \autoref{fig_re:lat_per_iter}. This is on par with other IK solvers, where solution times ranges from $0.03$ms to $3.45$ms \cite{bib:TRAC_IK}. This comparison isn't completely fair, because other IK solvers typically aim for more precision ($10^{-6}$mm). After one iteration, the current implementation typically reduces the error below $0.1\text{mm}^2$, as shown in \autoref{fig_re:err_per_iter}.\\
+The current implementation would benefit from checking if convergence is failing and then deciding to terminate early.
+
+\section{Cybersecurity}
+The current implementation shows some successful defences against cyber attacks. In practice, this implementation is far from a secure system. Current vulnerabilities include, but are not limited to:
+\begin{enumerate}[nosep]
+    \item Side channel attacks
+    \item DoS attacks (untested)
+    \item Jamming
+    \item Physical attacks, such as glitch attacks
+    \item Reprogramming or reading the firmware
+    \item Any vulnerabilities on the operator-side device
+    \item Social engineering
+\end{enumerate}
