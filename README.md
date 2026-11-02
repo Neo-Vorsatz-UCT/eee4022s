@@ -19,6 +19,7 @@ Teleoperation systems are used to allow humans to control robotic systems over l
 
 # Demo video
 <video src="data/EEE4022S_TDR-04_Demo.mp4" controls width="100%"></video>
+[(link to video file)](data/EEE4022S_TDR-04_Demo.mp4)
 
 # License
 This project is released on the GNU Lesser General Public License v2.1.
