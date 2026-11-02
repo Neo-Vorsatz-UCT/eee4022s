@@ -1,9 +1,6 @@
-# Credits
-This implementation builds off the work of https://doi.org/10.1109/ICEV56253.2022.9959663
+# Braccio Inverse Kinematics
+## Overview
+This subsystem performs the inverse kinematics for the Braccio, using a variation of FABRIK described by [Moreno *et al.*](https://doi.org/10.1109/ICEV56253.2022.9959663). It's also the seed for the [FabRUSTik](https://github.com/Neo-Vorsatz/fabrustik) library. The implementation in this repository is deprecated, but the independent library may receive future maintenance and improvements.
 
-# Future Features
-If I have the time in future:
-- Parallel robotic manipulators
-- More joint types (ball, sliding, screw)
-- Orientationless (only position) end-effector targets
-- Fixed joints, allowing for positional and angular offsets
+## Credits
+[Moreno *et al.*](https://doi.org/10.1109/ICEV56253.2022.9959663) receive credit for developing the base algorithm.

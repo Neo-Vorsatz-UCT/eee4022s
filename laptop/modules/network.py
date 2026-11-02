@@ -43,7 +43,7 @@ _CIPHER = b"PSK-AES128-GCM-SHA256"
 _MDNS_HOSTNAME = "eee4022s-braccio"
 _MDNS_SERVICE = "_actuation._udp.local."
 _MDNS_TIMEOUT_MS = 2000 # timeout for ESP32 to respond to lookup
-_ESP32_IPV4_OVERRIDE = "192.168.0.83" # set to `None` to use mDNS, and set to an IPv4 string to override mDNS
+_ESP32_IPV4_OVERRIDE = "192.168.142.43" #"192.168.0.83" # set to `None` to use mDNS, and set to an IPv4 string to override mDNS
 _PORT = 42069 # used if overriding mDNS
 
 # OpenSSL constants, from ssl.h and bio.h
